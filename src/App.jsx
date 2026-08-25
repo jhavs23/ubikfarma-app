@@ -1,13 +1,13 @@
-import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
+import { signIn, signUp, signOut, getCurrentUser } from 'aws-amplify/auth';
 import React, { useState, useEffect } from 'react';
 import { 
   Search, MapPin, Navigation, Upload, Sparkles, Stethoscope, Building2, User, Lock, 
   Menu, X, Plus, Trash2, Hospital, ShoppingBag, ExternalLink, PhoneCall, ChevronRight, History,
-  Heart, Bell, Filter, Users, LogIn, UserPlus, CreditCard, LayoutDashboard
+  Heart, Bell, Filter, Users, LogIn, UserPlus, CreditCard, LayoutDashboard, ArrowLeft
 } from 'lucide-react';
 import { generateClient } from 'aws-amplify/api';
 import { createQuoteRequest } from './graphql/mutations';
-import { uploadData, getUrl } from 'aws-amplify/storage'; // 🔥 API moderna de Amplify v6
+import { uploadData, getUrl } from 'aws-amplify/storage';
 
 import logoImg from "./assets/ubikfarma-logo.png";
 
@@ -118,7 +118,7 @@ export default function App() {
   const [useGps, setUseGps] = useState(false);
   const [rateBcv] = useState(772.54);
 
-  // 🔥 ESTADOS DE AUTENTICACIÓN (reemplaza dummyUserSub)
+  // 🔥 ESTADOS DE AUTENTICACIÓN
   const [userSub, setUserSub] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -149,6 +149,9 @@ export default function App() {
   // Estado para límites del usuario
   const [userPlan, setUserPlan] = useState('FREE');
   const [remainingRequests, setRemainingRequests] = useState(2);
+
+  // Estado para mensajes de error en el modal
+  const [authError, setAuthError] = useState('');
 
   // Datos mock
   const mockQuotes = [
@@ -248,24 +251,18 @@ export default function App() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        // ✅ Usar getCurrentUser en lugar de Auth.currentAuthenticatedUser()
         const user = await getCurrentUser();
-        const sub = user.userId; // 'userId' es el equivalente al 'sub' en v6
+        const sub = user.userId;
         setUserSub(sub);
         setIsAuthenticated(true);
-        
-        // Cargar límites con el sub real
         const data = await checkPatientLimit(sub);
         setUserPlan(data.plan);
         setRemainingRequests(data.remainingRequests);
         console.log("✅ Usuario autenticado:", sub);
       } catch (error) {
-        // No autenticado: usar usuario invitado
         const guestId = "guest-" + Date.now();
         setUserSub(guestId);
         setIsAuthenticated(false);
-        
-        // Cargar límites para invitado
         const data = await checkPatientLimit(guestId);
         setUserPlan(data.plan);
         setRemainingRequests(data.remainingRequests);
@@ -275,48 +272,40 @@ export default function App() {
     checkUser();
   }, []);
 
-  // --- Envío de cotización con validación de límites Y SUBIDA DE RECETA A S3 ---
+  // --- Envío de cotización ---
   const handleSendQuote = async (e) => {
     e.preventDefault();
 
-    // 1. Validar que haya medicamentos
     const validMedicines = medicinesList.filter(item => item.medicine.trim() !== '');
     if (validMedicines.length === 0) {
       alert("Por favor ingresa al menos un medicamento.");
       return;
     }
 
-    // 2. Validar límite de medicamentos para usuarios gratuitos
     if (userPlan === 'FREE' && validMedicines.length > 2) {
       alert("Como usuario gratuito, solo puedes cotizar hasta 2 medicamentos por consulta. Suscríbete por $0.99/mes para cotizar más.");
       return;
     }
 
-    // 3. Validar límite de consultas mensuales
     if (remainingRequests <= 0) {
       alert("Has alcanzado el límite de 2 consultas gratis este mes. Suscríbete por $0.99/mes para consultas ilimitadas.");
       return;
     }
 
-    // 🔥 4. SUBIR RECETA A S3 con la API moderna (uploadData / getUrl)
     let prescriptionImageUrl = null;
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
       try {
         const file = fileInput.files[0];
-        // Verificar que sea una imagen
         if (!file.type.startsWith('image/')) {
           alert("Por favor selecciona una imagen válida (JPEG, PNG, etc.).");
           return;
         }
-        // Verificar tamaño (máximo 5MB)
         if (file.size > 5 * 1024 * 1024) {
           alert("La imagen es demasiado grande. Máximo 5MB.");
           return;
         }
-        
         const fileName = `prescriptions/${userSub}/${Date.now()}_${file.name}`;
-        // Subir el archivo con uploadData
         const uploadResult = await uploadData({
           path: fileName,
           data: file,
@@ -325,7 +314,6 @@ export default function App() {
             accessLevel: 'guest'
           }
         }).result;
-        // Obtener la URL pública con getUrl
         const urlResult = await getUrl({
           path: uploadResult.path,
           options: { accessLevel: 'guest' }
@@ -339,14 +327,11 @@ export default function App() {
       }
     }
 
-    // 5. Construir input
     const first = validMedicines[0];
     const allMedicinesJSON = JSON.stringify(validMedicines);
 
     try {
-      // Determinar max_responses_allowed según el plan
       const maxResponses = userPlan === 'FREE' ? 2 : 4;
-
       const inputData = {
         patient_id: userSub,
         patient_name: "",
@@ -375,11 +360,9 @@ export default function App() {
         authMode: 'apiKey'
       });
 
-      // 6. Incrementar el contador de consultas
       await incrementPatientUsage(userSub);
       setRemainingRequests(prev => prev - 1);
 
-      // 7. Limpiar el campo de archivo
       if (fileInput) {
         fileInput.value = '';
       }
@@ -395,7 +378,25 @@ export default function App() {
   // --- Función para abrir el modal de autenticación ---
   const handleOpenAuthModal = (mode = 'login') => {
     setAuthMode(mode);
+    setAuthError('');
     setShowAuthModal(true);
+  };
+
+  // --- Cerrar sesión ---
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setUserSub(null);
+      setIsAuthenticated(false);
+      const guestId = "guest-" + Date.now();
+      setUserSub(guestId);
+      const data = await checkPatientLimit(guestId);
+      setUserPlan(data.plan);
+      setRemainingRequests(data.remainingRequests);
+      alert("Sesión cerrada correctamente.");
+    } catch (error) {
+      alert("Error al cerrar sesión: " + error.message);
+    }
   };
 
   // --- Filtrado de doctores ---
@@ -577,8 +578,91 @@ export default function App() {
         </div>
       )}
 
+      {/* 🏥 SECCIÓN INFORMATIVA: PARA QUIÉN ES UBIKFARMA */}
+      <div className="max-w-7xl mx-auto px-4 mt-8">
+        <h2 className="text-3xl font-black text-center text-slate-900 mb-2">
+          ¿Para quién es <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>?
+        </h2>
+        <p className="text-center text-slate-600 text-sm mb-8 max-w-2xl mx-auto">
+          Conectamos a los pacientes con las farmacias y los profesionales de la salud de una manera rápida, segura y moderna.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Tarjeta: Pacientes */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
+              <User className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Para Pacientes</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Cotiza medicamentos en segundos, compara precios y elige la farmacia más cercana. 
+              <span className="font-bold text-blue-600"> Gratis hasta 2 consultas al mes.</span>
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+              <li className="flex items-center gap-2">✅ Encuentra tu medicamento al mejor precio</li>
+              <li className="flex items-center gap-2">✅ Recibe respuestas de varias farmacias</li>
+              <li className="flex items-center gap-2">✅ Sube tu receta médica de forma segura</li>
+            </ul>
+            <button 
+              onClick={() => handleOpenAuthModal('register')}
+              className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
+            >
+              Regístrate gratis <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Tarjeta: Farmacias */}
+          <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-sm hover:shadow-md transition group relative">
+            <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Principal</div>
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition">
+              <Building2 className="w-6 h-6 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Para Farmacias</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Recibe solicitudes de pacientes en tu zona, responde con precios y haz crecer tu negocio.
+              <span className="font-bold text-emerald-600"> Planes desde $9.99/mes.</span>
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+              <li className="flex items-center gap-2">✅ Cotizaciones ilimitadas (Premium/Pro)</li>
+              <li className="flex items-center gap-2">✅ Prioridad en respuestas</li>
+              <li className="flex items-center gap-2">✅ Panel de estadísticas y ventas</li>
+              <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
+            </ul>
+            <button 
+              onClick={() => setActiveTab('plans')}
+              className="mt-4 text-sm font-bold text-emerald-600 hover:underline flex items-center gap-1"
+            >
+              Ver planes <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Tarjeta: Profesionales de la Salud */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
+              <Stethoscope className="w-6 h-6 text-purple-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Para Profesionales de la Salud</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Médicos, fisioterapeutas, psicólogos, masajistas y más. Conecta con miles de pacientes.
+              <span className="font-bold text-purple-600"> Plan VIP desde $9.99/mes.</span>
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+              <li className="flex items-center gap-2">✅ Perfil destacado en el directorio médico</li>
+              <li className="flex items-center gap-2">✅ Anuncios contextuales según búsquedas</li>
+              <li className="flex items-center gap-2">✅ Canal directo con pacientes</li>
+              <li className="flex items-center gap-2">✅ Anuncios en Meta y Google</li>
+            </ul>
+            <button 
+              onClick={() => setActiveTab('plans')}
+              className="mt-4 text-sm font-bold text-purple-600 hover:underline flex items-center gap-1"
+            >
+              Ver planes VIP <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
         {/* FORMULARIO DE BÚSQUEDA */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm space-y-6">
           <form onSubmit={handleSendQuote} className="space-y-6">
@@ -770,7 +854,6 @@ export default function App() {
 
         {/* LATERAL DERECHO */}
         <div className="lg:col-span-5 space-y-6">
-          
           {/* Respuestas en Tiempo Real */}
           <div className="bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
@@ -825,7 +908,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Cotizaciones bloqueadas (solo blur) */}
+              {/* Cotizaciones bloqueadas */}
               <div className="relative pt-1 border-t border-slate-200">
                 <div className="space-y-3 filter blur-[4px] pointer-events-none opacity-30">
                   {mockQuotes.slice(2).map((quote) => (
@@ -951,51 +1034,169 @@ export default function App() {
               </div>
             )}
           </div>
-
         </div>
       </main>
     </>
   );
 
-  // --- Modal de autenticación ---
+  // --- 🔥 MODAL DE AUTENTICACIÓN REAL (con diseño mejorado) ---
   const renderAuthModal = () => {
     if (!showAuthModal) return null;
+
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const password = e.target.password.value;
+      setAuthError('');
+      try {
+        await signIn({ username: email, password });
+        setShowAuthModal(false);
+        const user = await getCurrentUser();
+        setUserSub(user.userId);
+        setIsAuthenticated(true);
+        const data = await checkPatientLimit(user.userId);
+        setUserPlan(data.plan);
+        setRemainingRequests(data.remainingRequests);
+        alert("✅ Inicio de sesión exitoso");
+      } catch (error) {
+        setAuthError(error.message);
+      }
+    };
+
+    const handleRegister = async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const password = e.target.password.value;
+      const confirmPassword = e.target.confirmPassword?.value;
+      const fullName = e.target.fullName?.value || "";
+      
+      if (password !== confirmPassword) {
+        setAuthError("Las contraseñas no coinciden.");
+        return;
+      }
+      
+      setAuthError('');
+      try {
+        await signUp({
+          username: email,
+          password,
+          options: {
+            userAttributes: {
+              email,
+              name: fullName,
+            },
+          },
+        });
+        alert("✅ Registro exitoso. Revisa tu correo para confirmar.");
+        setAuthMode('login');
+        setAuthError('Registro exitoso. Ahora inicia sesión.');
+      } catch (error) {
+        setAuthError(error.message);
+      }
+    };
+
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAuthModal(false)}>
-        <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-black text-slate-900 text-lg">
-              {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Gratuita'}
-            </h3>
-            <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
-            </button>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setShowAuthModal(false)}>
+        <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          {/* Cabecera con logo */}
+          <div className="bg-gradient-to-r from-blue-600 to-emerald-500 p-4 flex justify-center items-center gap-3">
+            <img src={logoImg} alt="UBIKFARMA" className="h-10 w-auto object-contain" />
+            <span className="font-black text-2xl text-white tracking-tight">
+              UBIK<span className="text-emerald-200">FARMA</span>
+            </span>
           </div>
-          <div className="space-y-4">
-            {authMode === 'register' && (
-              <input type="text" placeholder="Nombre completo" className="w-full border rounded-lg px-4 py-2 text-sm" />
+          
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-black text-slate-900 text-lg">
+                {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Gratuita'}
+              </h3>
+              <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {authError && (
+              <div className={`mb-4 p-3 rounded-lg text-sm ${authError.includes('exitoso') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {authError}
+              </div>
             )}
-            <input type="email" placeholder="Correo electrónico" className="w-full border rounded-lg px-4 py-2 text-sm" />
-            <input type="password" placeholder="Contraseña" className="w-full border rounded-lg px-4 py-2 text-sm" />
-            {authMode === 'register' && (
-              <input type="password" placeholder="Confirmar contraseña" className="w-full border rounded-lg px-4 py-2 text-sm" />
-            )}
-            <button 
-              onClick={() => {
-                setShowAuthModal(false);
-                alert(authMode === 'login' ? 'Inicio de sesión simulado. Conecta con Cognito.' : 'Registro simulado. Conecta con Cognito.');
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl transition"
-            >
-              {authMode === 'login' ? 'Entrar' : 'Registrarme'}
-            </button>
-            <p className="text-center text-xs text-slate-500">
-              {authMode === 'login' ? (
-                <>¿No tienes cuenta? <button onClick={() => setAuthMode('register')} className="text-blue-600 font-bold">Regístrate</button></>
-              ) : (
-                <>¿Ya tienes cuenta? <button onClick={() => setAuthMode('login')} className="text-blue-600 font-bold">Inicia sesión</button></>
+
+            <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} className="space-y-4">
+              {authMode === 'register' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nombre completo</label>
+                  <input 
+                    type="text" 
+                    name="fullName" 
+                    placeholder="Ej. Juan Pérez" 
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    required 
+                  />
+                </div>
               )}
-            </p>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Correo electrónico</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  placeholder="tu@email.com" 
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  placeholder="Mínimo 8 caracteres" 
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  required 
+                  minLength="8"
+                />
+              </div>
+              {authMode === 'register' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Confirmar contraseña</label>
+                  <input 
+                    type="password" 
+                    name="confirmPassword" 
+                    placeholder="Repite la contraseña" 
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    required 
+                    minLength="8"
+                  />
+                </div>
+              )}
+              <button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition duration-200"
+              >
+                {authMode === 'login' ? 'Entrar' : 'Registrarme'}
+              </button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => {
+                  setAuthMode(authMode === 'login' ? 'register' : 'login');
+                  setAuthError('');
+                }}
+                className="text-xs text-blue-600 font-bold hover:underline"
+              >
+                {authMode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+              </button>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-200 text-center">
+              <button 
+                onClick={() => setShowAuthModal(false)}
+                className="text-xs text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1 mx-auto"
+              >
+                <ArrowLeft className="w-4 h-4" /> Volver a la página principal
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1043,12 +1244,27 @@ export default function App() {
               >
                 <Building2 className="w-4 h-4" /> <span>¿Eres Farmacia?</span>
               </button>
-              <button 
-                onClick={() => handleOpenAuthModal('login')}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition"
-              >
-                Iniciar Sesión
-              </button>
+              
+              {/* 🔥 Botón de autenticación / Cerrar sesión */}
+              {isAuthenticated ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-600">👤 {userSub?.slice(0,8)}</span>
+                  <button 
+                    onClick={handleLogout}
+                    className="text-sm font-bold text-red-600 hover:text-red-800 transition px-2"
+                  >
+                    Cerrar Sesión
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => handleOpenAuthModal('login')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition"
+                >
+                  Iniciar Sesión
+                </button>
+              )}
+              
               <button 
                 onClick={() => setActiveTab('plans')}
                 className="text-sm font-bold text-emerald-600 hover:text-emerald-800 transition px-2"
@@ -1059,9 +1275,21 @@ export default function App() {
 
             {/* Menú Mobile */}
             <div className="flex items-center gap-2 md:hidden">
-              <button onClick={() => handleOpenAuthModal('login')} className="bg-blue-600 text-white font-bold text-sm px-3 py-1.5 rounded-lg">
-                Entrar
-              </button>
+              {isAuthenticated ? (
+                <button 
+                  onClick={handleLogout}
+                  className="text-xs font-bold text-red-600 px-2"
+                >
+                  Cerrar sesión
+                </button>
+              ) : (
+                <button 
+                  onClick={() => handleOpenAuthModal('login')} 
+                  className="bg-blue-600 text-white font-bold text-sm px-3 py-1.5 rounded-lg"
+                >
+                  Entrar
+                </button>
+              )}
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1.5 rounded-lg text-slate-800 hover:bg-slate-100">
                 {mobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
               </button>
@@ -1083,6 +1311,11 @@ export default function App() {
               <button onClick={() => { setActiveTab('plans'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-50">
                 <CreditCard className="w-5 h-5 text-emerald-600" /> Planes
               </button>
+              {!isAuthenticated && (
+                <button onClick={() => { handleOpenAuthModal('login'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-blue-600">
+                  <LogIn className="w-5 h-5" /> Iniciar Sesión
+                </button>
+              )}
             </div>
           )}
         </header>
