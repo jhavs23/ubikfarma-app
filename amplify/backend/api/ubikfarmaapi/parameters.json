@@ -1,0 +1,11 @@
+{
+  "AppSyncApiName": "ubikfarmaapi",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthCognitoUserPoolId": {
+    "Fn::GetAtt": [
+      "authubikfarmaapp72b007be",
+      "Outputs.UserPoolId"
+    ]
+  }
+}

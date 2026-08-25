@@ -1,0 +1,118 @@
+{
+  "api": {
+    "ubikfarmaapi": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "ubikfarmaapp72b007be"
+        }
+      ],
+      "output": {
+        "authConfig": {
+          "additionalAuthenticationProviders": [
+            {
+              "apiKeyConfig": {
+                "apiKeyExpirationDate": "2027-08-23T23:15:02.991Z",
+                "apiKeyExpirationDays": 365,
+                "description": "ubikfarma api key"
+              },
+              "authenticationType": "API_KEY"
+            }
+          ],
+          "defaultAuthentication": {
+            "authenticationType": "AMAZON_COGNITO_USER_POOLS",
+            "userPoolConfig": {
+              "userPoolId": "authubikfarmaapp72b007be"
+            }
+          }
+        }
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "AppSync"
+    }
+  },
+  "auth": {
+    "ubikfarmaapp72b007be": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyCharacters": [],
+          "passwordPolicyMinLength": 8
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [
+          "EMAIL"
+        ],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito"
+    }
+  },
+  "function": {
+    "checkPatientLimit": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "incrementPatientUsage": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_checkPatientLimit_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "checkPatientLimit"
+        }
+      ]
+    },
+    "AMPLIFY_function_checkPatientLimit_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "checkPatientLimit"
+        }
+      ]
+    },
+    "AMPLIFY_function_incrementPatientUsage_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "incrementPatientUsage"
+        }
+      ]
+    },
+    "AMPLIFY_function_incrementPatientUsage_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "incrementPatientUsage"
+        }
+      ]
+    }
+  },
+  "storage": {
+    "ubikfarmaStorage": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3"
+    }
+  }
+}

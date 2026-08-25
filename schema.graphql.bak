@@ -1,0 +1,413 @@
+# ==========================================
+# SCHEMA UBIKFARMA - DESPLIEGUE POR FASES
+# ==========================================
+#
+# FASE 1 ACTIVA (modelos 1-6):
+#   ExchangeRate, PharmacyProfile, DoctorProfile,
+#   QuoteRequest, QuoteResponse, PaymentTransaction
+#
+# FASES 2, 3 y 4 COMENTADAS (modelos 7-15)
+#   Descomentar progresivamente después de cada push exitoso
+# ==========================================
+
+# ==========================================
+# ENUMS GLOBALES (SIEMPRE ACTIVOS)
+# ==========================================
+
+enum SubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_APPROVAL
+  EXPIRED
+}
+
+enum QuoteRequestStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  EXPIRED
+}
+
+enum UrgencyLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AvailabilityType {
+  DISPONIBLE
+  DISPONIBLE_SUSTITUTO
+  NO_DISPONIBLE
+}
+
+enum AuditAction {
+  RESPONDED
+  DISCARDED_NO_STOCK
+  TIMED_OUT
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum NotificationType {
+  NEW_QUOTE_REQUEST
+  QUOTE_RESPONSE_RECEIVED
+  QUOTE_EXPIRED
+  PHARMACY_APPROVED
+  SUBSCRIPTION_RENEWAL
+  PAYMENT_VERIFIED
+  PAYMENT_REJECTED
+  VIP_EXPIRING
+}
+
+enum SenderType {
+  PATIENT
+  PHARMACY
+  SYSTEM
+}
+
+# ==========================================
+# FASE 1: MODELOS BASE (ACTIVOS)
+# ==========================================
+
+# --- 1. ExchangeRate ---
+type ExchangeRate
+  @model
+  @auth(
+    rules: [
+      { allow: groups, groups: ["SUPER_ADMIN"] }
+      { allow: private, operations: [read] }
+      { allow: public, operations: [read] }
+    ]
+  ) {
+  id: ID!
+  rate_bcv: Float!
+  updated_at: AWSDateTime!
+  updated_by: String!
+}
+
+# --- 2. PharmacyProfile ---
+type PharmacyProfile
+  @model
+  @auth(
+    rules: [
+      { allow: owner }
+      { allow: groups, groups: ["SUPER_ADMIN"] }
+      { allow: private, operations: [read] }
+      { allow: public, operations: [read] }
+    ]
+  ) {
+  id: ID!
+  owner_id: String!
+  name: String!
+  rif: String!
+  phone: String!
+  whatsapp: String!
+  whatsapp_enabled: Boolean
+  logo_url: String
+  cover_url: String
+  address: String!
+  state: String!
+  city: String!
+  zone: String!
+  latitude: Float!
+  longitude: Float!
+  delivery_available: Boolean!
+  pickup_available: Boolean!
+  delivery_radius_km: Float
+  subscription_status: SubscriptionStatus!
+  subscription_expires_at: AWSDateTime
+  is_verified: Boolean
+  verification_date: AWSDateTime
+  rating_average: Float
+  total_ratings: Int
+  opening_hours: AWSJSON
+  holidays: [AWSDate]
+}
+
+# --- 3. DoctorProfile ---
+type DoctorProfile
+  @model
+  @auth(
+    rules: [
+      { allow: owner }
+      { allow: groups, groups: ["SUPER_ADMIN"] }
+      { allow: public, operations: [read] }
+    ]
+  ) {
+  id: ID!
+  slug: String!
+  full_name: String!
+  medical_code: String!
+  primary_specialty: String! @index(name: "bySpecialty")
+  sub_specialties: [String]
+  photo_urls: [String]
+  bio: String
+  whatsapp: String!
+  clinic_name: String!
+  address: String!
+  state: String!
+  city: String!
+  is_vip: Boolean!
+  vip_expires_at: AWSDateTime
+}
+
+# --- 4. QuoteRequest ---
+type QuoteRequest
+  @model
+  @auth(
+    rules: [
+      { allow: owner }
+      { allow: groups, groups: ["SUPER_ADMIN"] }
+      { allow: private, operations: [read] }
+      { allow: public, operations: [create, read] }
+    ]
+  ) {
+  id: ID!
+  patient_id: String
+  patient_name: String
+  patient_phone: String
+  patient_phone_verified: Boolean
+  medicine_name: String!
+  dosage_mg: String
+  presentation: String
+  quantity: Int!
+  prescription_image_url: String
+  notes: String
+  state: String!
+  city: String!
+  zone: String!
+  latitude: Float
+  longitude: Float
+  is_guest: Boolean!
+  max_responses_allowed: Int!
+  responses_count: Int
+  pharmacy_views: Int
+  status: QuoteRequestStatus!
+  urgency_level: UrgencyLevel
+  preferred_brands: [String]
+}
+
+# --- 5. QuoteResponse ---
+type QuoteResponse
+  @model
+  @auth(
+    rules: [
+      { allow: owner }
+      { allow: groups, groups: ["SUPER_ADMIN"] }
+      { allow: private, operations: [read] }
+      { allow: public, operations: [read] }
+    ]
+  ) {
+  id: ID!
+  quote_request_id: ID! @index(name: "byQuoteRequest")
+  pharmacy_id: ID! @index(name: "byPharmacy")
+  employee_user_id: String!
+  availability: AvailabilityType!
+  unit_price_usd: Float
+  total_price_usd: Float
+  delivery_cost_usd: Float
+  notes: String
+}
+
+# --- 6. PaymentTransaction ---
+type PaymentTransaction
+  @model
+  @auth(
+    rules: [
+      { allow: owner }
+      { allow: groups, groups: ["SUPER_ADMIN"] }
+    ]
+  ) {
+  id: ID!
+  user_id: String!
+  amount_usd: Float!
+  status: PaymentStatus!
+  reference_number: String!
+  bank_origin: String
+  voucher_url: String
+  created_at: AWSDateTime!
+}
+
+# ==========================================
+# FASE 2: AUDITORÍA Y DISTRIBUIDORES (COMENTADO)
+# ==========================================
+# ⚠️ DESCOMENTAR DESPUÉS DE LA FASE 1
+# Ejecutar: amplify api gql-compile && amplify push -y
+
+# # --- 7. PharmacyEmployeeAudit ---
+# type PharmacyEmployeeAudit
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#       { allow: private, operations: [read] }
+#     ]
+#   ) {
+#   id: ID!
+#   pharmacy_id: ID! @index(name: "byPharmacy")
+#   employee_user_id: String!
+#   quote_request_id: ID!
+#   action: AuditAction!
+#   timestamp: AWSDateTime!
+# }
+
+# # --- 8. DistributorProfile ---
+# type DistributorProfile
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#       { allow: private, operations: [read] }
+#     ]
+#   ) {
+#   id: ID!
+#   company_name: String!
+#   rif: String!
+#   catalog_url: String
+#   contact_whatsapp: String!
+# }
+
+# ==========================================
+# FASE 3: NOTIFICACIONES, FAVORITOS, REVIEWS, ESTADÍSTICAS (COMENTADO)
+# ==========================================
+# ⚠️ DESCOMENTAR DESPUÉS DE LA FASE 2
+# Ejecutar: amplify api gql-compile && amplify push -y
+
+# # --- 9. Notification ---
+# type Notification
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#     ]
+#   ) {
+#   id: ID!
+#   user_id: String! @index(name: "byUser")
+#   type: NotificationType!
+#   title: String!
+#   message: String!
+#   read: Boolean!
+#   data: AWSJSON
+#   created_at: AWSDateTime!
+# }
+
+# # --- 10. Favorite ---
+# type Favorite
+#   @model
+#   @auth(rules: [{ allow: owner }, { allow: groups, groups: ["SUPER_ADMIN"] }]) {
+#   id: ID!
+#   user_id: String! @index(name: "byUser")
+#   pharmacy_id: ID
+#   doctor_id: ID
+#   product_name: String
+#   created_at: AWSDateTime!
+# }
+
+# # --- 11. Review ---
+# type Review
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#       { allow: public, operations: [read] }
+#     ]
+#   ) {
+#   id: ID!
+#   pharmacy_id: ID! @index(name: "byPharmacy")
+#   user_id: String! @index(name: "byUser")
+#   rating: Int!
+#   comment: String
+#   created_at: AWSDateTime!
+#   updated_at: AWSDateTime!
+# }
+
+# # --- 12. PharmacyStats ---
+# type PharmacyStats
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#     ]
+#   ) {
+#   id: ID!
+#   pharmacy_id: ID! @index(name: "byPharmacy")
+#   total_quotes_received: Int!
+#   total_quotes_responded: Int!
+#   conversion_rate: Float!
+#   average_response_time: Float!
+#   top_medicines: [String]
+#   monthly_data: AWSJSON
+#   updated_at: AWSDateTime!
+# }
+
+# ==========================================
+# FASE 4: BÚSQUEDA, CHAT Y PROMOCIONES (COMENTADO)
+# ==========================================
+# ⚠️ DESCOMENTAR DESPUÉS DE LA FASE 3
+# Ejecutar: amplify api gql-compile && amplify push -y
+
+# # --- 13. SearchHistory ---
+# type SearchHistory
+#   @model
+#   @auth(rules: [{ allow: owner }, { allow: groups, groups: ["SUPER_ADMIN"] }]) {
+#   id: ID!
+#   user_id: String! @index(name: "byUser")
+#   search_term: String!
+#   medicine_name: String
+#   state: String
+#   city: String
+#   created_at: AWSDateTime!
+# }
+
+# # --- 14. ChatMessage ---
+# type ChatMessage
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: private, operations: [read, create] }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#     ]
+#   ) {
+#   id: ID!
+#   quote_request_id: ID! @index(name: "byQuoteRequest")
+#   sender_id: String!
+#   sender_type: SenderType!
+#   message: String!
+#   read: Boolean!
+#   created_at: AWSDateTime!
+# }
+
+# # --- 15. Promotion ---
+# type Promotion
+#   @model
+#   @auth(
+#     rules: [
+#       { allow: owner }
+#       { allow: groups, groups: ["SUPER_ADMIN"] }
+#       { allow: public, operations: [read] }
+#     ]
+#   ) {
+#   id: ID!
+#   pharmacy_id: ID! @index(name: "byPharmacy")
+#   title: String!
+#   description: String!
+#   discount_percentage: Float
+#   discount_fixed_usd: Float
+#   code: String
+#   usage_count: Int
+#   valid_from: AWSDateTime!
+#   valid_to: AWSDateTime!
+#   active: Boolean!
+#   created_at: AWSDateTime!
+# }

@@ -1,0 +1,80 @@
+- Fetching updates to backend environment: dev from the cloud.
+- Building resource auth/ubikfarma058671c4
+- Building resource api/ubikfarma
+⚠️ WARNING: owners may reassign ownership for the following model(s) and role(s): PharmacyProfile: [owner], DoctorProfile: [owner], QuoteRequest: [owner], QuoteResponse: [owner], StoreListing: [owner], PaymentTransaction: [owner]. If this is not intentional, you may want to apply field-level authorization rules to these fields. To read more: https://docs.amplify.aws/cli/graphql/authorization-rules/#per-user--owner-based-data-access.
+✅ GraphQL schema compiled successfully.
+
+Edit your schema at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema.graphql or place .graphql files in a directory at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema
+✔ Successfully pulled backend environment dev from the cloud.
+- Building resource api/ubikfarma
+⚠️ WARNING: owners may reassign ownership for the following model(s) and role(s): PharmacyProfile: [owner], DoctorProfile: [owner], QuoteRequest: [owner], QuoteResponse: [owner], StoreListing: [owner], PaymentTransaction: [owner]. If this is not intentional, you may want to apply field-level authorization rules to these fields. To read more: https://docs.amplify.aws/cli/graphql/authorization-rules/#per-user--owner-based-data-access.
+✅ GraphQL schema compiled successfully.
+
+Edit your schema at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema.graphql or place .graphql files in a directory at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema
+[0m[0m
+[0m    Current Environment: dev[0m
+[0m    [0m
+[90m┌──────────[39m[90m┬───────────────────[39m[90m┬───────────[39m[90m┬───────────────────┐[39m
+[90m│[39m Category [90m│[39m Resource name     [90m│[39m Operation [90m│[39m Provider plugin   [90m│[39m
+[90m├──────────[39m[90m┼───────────────────[39m[90m┼───────────[39m[90m┼───────────────────┤[39m
+[90m│[39m Api      [90m│[39m ubikfarma         [90m│[39m Update    [90m│[39m awscloudformation [90m│[39m
+[90m├──────────[39m[90m┼───────────────────[39m[90m┼───────────[39m[90m┼───────────────────┤[39m
+[90m│[39m Auth     [90m│[39m ubikfarma058671c4 [90m│[39m No Change [90m│[39m awscloudformation [90m│[39m
+[90m└──────────[39m[90m┴───────────────────[39m[90m┴───────────[39m[90m┴───────────────────┘[39m
+⚠️ WARNING: owners may reassign ownership for the following model(s) and role(s): PharmacyProfile: [owner], DoctorProfile: [owner], QuoteRequest: [owner], QuoteResponse: [owner], StoreListing: [owner], PaymentTransaction: [owner]. If this is not intentional, you may want to apply field-level authorization rules to these fields. To read more: https://docs.amplify.aws/cli/graphql/authorization-rules/#per-user--owner-based-data-access.
+✅ GraphQL schema compiled successfully.
+
+Edit your schema at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema.graphql or place .graphql files in a directory at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema
+- Building resource api/ubikfarma
+⚠️ WARNING: owners may reassign ownership for the following model(s) and role(s): PharmacyProfile: [owner], DoctorProfile: [owner], QuoteRequest: [owner], QuoteResponse: [owner], StoreListing: [owner], PaymentTransaction: [owner]. If this is not intentional, you may want to apply field-level authorization rules to these fields. To read more: https://docs.amplify.aws/cli/graphql/authorization-rules/#per-user--owner-based-data-access.
+✅ GraphQL schema compiled successfully.
+
+Edit your schema at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema.graphql or place .graphql files in a directory at /home/jav-23/proyectos/ubikfarma-app/amplify/backend/api/ubikfarma/schema
+- Uploading files.
+@smithy/node-http-handler:WARN - socket usage at capacity=50 and 177 additional requests are enqueued.
+See https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/node-configuring-maxsockets.html
+or increase socketAcquisitionWarningTimeout=(millis) in the NodeHttpHandler config.
+
+
+UPDATE_IN_PROGRESS amplify-ubikfarma-dev-cfd90 AWS::CloudFormation::Stack Tue Aug 18 2026 20:13:58 GMT-0400 (GMT-04:00) User Initiated
+
+
+UPDATE_IN_PROGRESS authubikfarma058671c4 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:04 GMT-0400 (GMT-04:00) 
+UPDATE_COMPLETE    authubikfarma058671c4 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:05 GMT-0400 (GMT-04:00) 
+UPDATE_IN_PROGRESS apiubikfarma          AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:06 GMT-0400 (GMT-04:00) 
+
+
+UPDATE_IN_PROGRESS amplify-ubikfarma-dev-cfd90-apiubikfarma-1G5WKGPI3YRH2 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:06 GMT-0400 (GMT-04:00) User Initiated
+
+
+UPDATE_IN_PROGRESS ExchangeRate                    AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:12 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS GraphQLAPIDefaultApiKey215A6DD7 AWS::AppSync::ApiKey       Tue Aug 18 2026 20:14:13 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    ExchangeRate                    AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:13 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    GraphQLAPIDefaultApiKey215A6DD7 AWS::AppSync::ApiKey       Tue Aug 18 2026 20:14:14 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS PharmacyEmployeeAudit           AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:14 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS PharmacyProfile                 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:14 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    PharmacyEmployeeAudit           AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:14 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    PharmacyProfile                 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:15 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS PaymentTransaction              AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:15 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS QuoteRequest                    AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:15 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS DoctorProfile                   AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:15 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    PaymentTransaction              AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:16 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    DoctorProfile                   AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:16 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_COMPLETE    QuoteRequest                    AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:16 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+CREATE_IN_PROGRESS StoreListing                    AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:17 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+UPDATE_IN_PROGRESS QuoteResponse                   AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:17 GMT-0400 (GMT-04:00)                                                                                                                                                                                         
+CREATE_FAILED      StoreListing                    AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:17 GMT-0400 (GMT-04:00) S3 object does not exist. Bucket: amplify-ubikfarma-dev-cfd90-deployment, Key: amplify-appsync-files/97b36f9ab111f5eb1bbd3914626cbdb35f7284c9/stacks/StoreListing.json. Error: NoSuchKey
+
+
+UPDATE_FAILED               QuoteResponse                                          AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:18 GMT-0400 (GMT-04:00) Resource update cancelled                                                                                               
+UPDATE_ROLLBACK_IN_PROGRESS amplify-ubikfarma-dev-cfd90-apiubikfarma-1G5WKGPI3YRH2 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:18 GMT-0400 (GMT-04:00) The following resource(s) failed to create: [StoreListing]. The following resource(s) failed to update: [QuoteResponse].
+
+
+UPDATE_FAILED                                apiubikfarma                AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:28 GMT-0400 (GMT-04:00) Embedded stack arn:aws:cloudformation:us-east-1:521106216488:stack/amplify-ubikfarma-dev-cfd90-apiubikfarma-1G5WKGPI3YRH2/920b90b0-999e-11f1-a382-12e6e893d7c1 was not successfully updated. Currently in UPDATE_ROLLBACK_IN_PROGRESS with reason: The following resource(s) failed to create: [StoreListing]. The following resource(s) failed to update: [QuoteResponse].
+UPDATE_ROLLBACK_IN_PROGRESS                  amplify-ubikfarma-dev-cfd90 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:28 GMT-0400 (GMT-04:00) The following resource(s) failed to update: [apiubikfarma].                                                                                                                                                                                                                                                                                                                
+UPDATE_IN_PROGRESS                           authubikfarma058671c4       AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:30 GMT-0400 (GMT-04:00)                                                                                                                                                                                                                                                                                                                                                                            
+UPDATE_COMPLETE                              authubikfarma058671c4       AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:30 GMT-0400 (GMT-04:00)                                                                                                                                                                                                                                                                                                                                                                            
+UPDATE_IN_PROGRESS                           apiubikfarma                AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:31 GMT-0400 (GMT-04:00)                                                                                                                                                                                                                                                                                                                                                                            
+UPDATE_COMPLETE                              apiubikfarma                AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:41 GMT-0400 (GMT-04:00)                                                                                                                                                                                                                                                                                                                                                                            
+UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS amplify-ubikfarma-dev-cfd90 AWS::CloudFormation::Stack Tue Aug 18 2026 20:14:42 GMT-0400 (GMT-04:00)                                                                                                                                                                                                                                                                                                                                                                            
+[33m^Aborted![39m

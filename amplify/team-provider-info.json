@@ -1,0 +1,36 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-ubikfarmaapp-dev-be8ba-authRole",
+      "UnauthRoleArn": "arn:aws:iam::521106216488:role/amplify-ubikfarmaapp-dev-be8ba-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::521106216488:role/amplify-ubikfarmaapp-dev-be8ba-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-ubikfarmaapp-dev-be8ba-deployment",
+      "UnauthRoleName": "amplify-ubikfarmaapp-dev-be8ba-unauthRole",
+      "StackName": "amplify-ubikfarmaapp-dev-be8ba",
+      "StackId": "arn:aws:cloudformation:us-east-1:521106216488:stack/amplify-ubikfarmaapp-dev-be8ba/53e55970-9f47-11f1-a4a0-0afff2bd8565",
+      "AmplifyAppId": "d1n897u7tb7vv4"
+    },
+    "categories": {
+      "auth": {
+        "ubikfarmaapp72b007be": {}
+      },
+      "api": {
+        "ubikfarmaapi": {}
+      },
+      "function": {
+        "checkPatientLimit": {
+          "deploymentBucketName": "amplify-ubikfarmaapp-dev-be8ba-deployment",
+          "s3Key": "amplify-builds/checkPatientLimit-7039576e326c6c347174-build.zip"
+        },
+        "incrementPatientUsage": {
+          "deploymentBucketName": "amplify-ubikfarmaapp-dev-be8ba-deployment",
+          "s3Key": "amplify-builds/incrementPatientUsage-4d565345676237715870-build.zip"
+        }
+      },
+      "storage": {
+        "ubikfarmaStorage": {}
+      }
+    }
+  }
+}
