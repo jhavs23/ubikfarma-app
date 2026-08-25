@@ -596,18 +596,20 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-900">Para Pacientes</h3>
             <p className="text-sm text-slate-600 mt-2">
               Cotiza medicamentos en segundos, compara precios y elige la farmacia más cercana. 
-              <span className="font-bold text-blue-600"> Gratis hasta 2 consultas al mes.</span>
+              <span className="font-bold text-blue-600">consultas ilimitadas por 0.99$ al mes (Tasa BCV).</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li className="flex items-center gap-2">✅ Encuentra tu medicamento al mejor precio</li>
               <li className="flex items-center gap-2">✅ Recibe respuestas de varias farmacias</li>
               <li className="flex items-center gap-2">✅ Sube tu receta médica de forma segura</li>
+              <li className="flex items-center gap-2">✅ Gratis solo 2 consultas al mes</li>
+              <li className="flex items-center gap-2">✅ Consultas ilimitadas por solo 0.99$ al mes</li>
             </ul>
             <button 
               onClick={() => handleOpenAuthModal('register')}
               className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
             >
-              Regístrate gratis <ChevronRight className="w-4 h-4" />
+              Regístrate Aquì. <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
