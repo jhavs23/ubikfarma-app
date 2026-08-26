@@ -578,92 +578,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 🏥 SECCIÓN INFORMATIVA: PARA QUIÉN ES UBIKFARMA */}
-      <div className="max-w-7xl mx-auto px-4 mt-8">
-        <h2 className="text-3xl font-black text-center text-slate-900 mb-2">
-          ¿Para quién es <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>?
-        </h2>
-        <p className="text-center text-slate-600 text-sm mb-8 max-w-2xl mx-auto">
-          Conectamos a los pacientes con las farmacias y los profesionales de la salud de una manera rápida, segura y moderna.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Tarjeta: Pacientes */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
-              <User className="w-6 h-6 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-black text-slate-900">Para Pacientes</h3>
-            <p className="text-sm text-slate-600 mt-2">
-              Cotiza medicamentos en segundos, compara precios y elige la farmacia más cercana. 
-              <span className="font-bold text-blue-600">consultas ilimitadas por 0.99$ al mes (Tasa BCV).</span>
-            </p>
-            <ul className="mt-3 space-y-1 text-xs text-slate-500">
-              <li className="flex items-center gap-2">✅ Encuentra tu medicamento al mejor precio</li>
-              <li className="flex items-center gap-2">✅ Recibe respuestas de varias farmacias</li>
-              <li className="flex items-center gap-2">✅ Sube tu receta médica de forma segura</li>
-              <li className="flex items-center gap-2">✅ Gratis solo 2 consultas al mes</li>
-              <li className="flex items-center gap-2">✅ Consultas ilimitadas por solo 0.99$ al mes</li>
-            </ul>
-            <button 
-              onClick={() => handleOpenAuthModal('register')}
-              className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
-            >
-              Regístrate Aquì. <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Tarjeta: Farmacias */}
-          <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-sm hover:shadow-md transition group relative">
-            <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Principal</div>
-            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition">
-              <Building2 className="w-6 h-6 text-emerald-600" />
-            </div>
-            <h3 className="text-xl font-black text-slate-900">Para Farmacias</h3>
-            <p className="text-sm text-slate-600 mt-2">
-              Recibe solicitudes de pacientes en tu zona, responde con precios y haz crecer tu negocio.
-              <span className="font-bold text-emerald-600"> Planes desde $9.99/mes.</span>
-            </p>
-            <ul className="mt-3 space-y-1 text-xs text-slate-500">
-              <li className="flex items-center gap-2">✅ Cotizaciones ilimitadas (Premium/Pro)</li>
-              <li className="flex items-center gap-2">✅ Prioridad en respuestas</li>
-              <li className="flex items-center gap-2">✅ Panel de estadísticas y ventas</li>
-              <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
-            </ul>
-            <button 
-              onClick={() => setActiveTab('plans')}
-              className="mt-4 text-sm font-bold text-emerald-600 hover:underline flex items-center gap-1"
-            >
-              Ver planes <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Tarjeta: Profesionales de la Salud */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
-              <Stethoscope className="w-6 h-6 text-purple-600" />
-            </div>
-            <h3 className="text-xl font-black text-slate-900">Para Profesionales de la Salud</h3>
-            <p className="text-sm text-slate-600 mt-2">
-              Médicos, fisioterapeutas, psicólogos, masajistas y más. Conecta con miles de pacientes.
-              <span className="font-bold text-purple-600"> Plan VIP desde $9.99/mes.</span>
-            </p>
-            <ul className="mt-3 space-y-1 text-xs text-slate-500">
-              <li className="flex items-center gap-2">✅ Perfil destacado en el directorio médico</li>
-              <li className="flex items-center gap-2">✅ Anuncios contextuales según búsquedas</li>
-              <li className="flex items-center gap-2">✅ Canal directo con pacientes</li>
-              <li className="flex items-center gap-2">✅ Anuncios en Meta y Google</li>
-            </ul>
-            <button 
-              onClick={() => setActiveTab('plans')}
-              className="mt-4 text-sm font-bold text-purple-600 hover:underline flex items-center gap-1"
-            >
-              Ver planes VIP <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* FORMULARIO DE BÚSQUEDA */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm space-y-6">
@@ -714,7 +628,7 @@ export default function App() {
                           onChange={(e) => handleMedicineChange(item.id, 'medicine', e.target.value)}
                           placeholder="Ej. Acetaminofén (escribe solo uno)"
                           className="w-full bg-white border border-slate-400 rounded-lg px-3.5 py-2.5 text-base font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        /> 
+                        />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
@@ -1038,6 +952,92 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* 🏥 SECCIÓN INFORMATIVA: PARA QUIÉN ES UBIKFARMA (MOVIDA AL FINAL) */}
+      <div className="max-w-7xl mx-auto px-4 mt-8">
+        <h2 className="text-3xl font-black text-center text-slate-900 mb-2">
+          ¿Para quién es <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>?
+        </h2>
+        <p className="text-center text-slate-600 text-sm mb-8 max-w-2xl mx-auto">
+          Conectamos a los pacientes con las farmacias y los profesionales de la salud de una manera rápida, segura y moderna.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Tarjeta: Pacientes */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
+              <User className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Para Pacientes</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Cotiza medicamentos en segundos, compara precios y elige la farmacia más cercana. 
+              <span className="font-bold text-blue-600">consultas ilimitadas por 0.99$ al mes (Tasa BCV).</span>
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+              <li className="flex items-center gap-2">✅ Encuentra tu medicamento al mejor precio</li>
+              <li className="flex items-center gap-2">✅ Recibe respuestas de varias farmacias</li>
+              <li className="flex items-center gap-2">✅ Sube tu receta médica de forma segura</li>
+              <li className="flex items-center gap-2">✅ Gratis solo 2 consultas al mes</li>
+              <li className="flex items-center gap-2">✅ Consultas ilimitadas por solo 0.99$ al mes</li>
+            </ul>
+            <button 
+              onClick={() => handleOpenAuthModal('register')}
+              className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
+            >
+              Regístrate Aquì. <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Tarjeta: Farmacias */}
+          <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-sm hover:shadow-md transition group relative">
+            <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Principal</div>
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition">
+              <Building2 className="w-6 h-6 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Para Farmacias</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Recibe solicitudes de pacientes en tu zona, responde con precios y haz crecer tu negocio.
+              <span className="font-bold text-emerald-600"> Planes desde $9.99/mes.</span>
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+              <li className="flex items-center gap-2">✅ Cotizaciones ilimitadas (Premium/Pro)</li>
+              <li className="flex items-center gap-2">✅ Prioridad en respuestas</li>
+              <li className="flex items-center gap-2">✅ Panel de estadísticas y ventas</li>
+              <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
+            </ul>
+            <button 
+              onClick={() => setActiveTab('plans')}
+              className="mt-4 text-sm font-bold text-emerald-600 hover:underline flex items-center gap-1"
+            >
+              Ver planes <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Tarjeta: Profesionales de la Salud */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
+              <Stethoscope className="w-6 h-6 text-purple-600" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">Para Profesionales de la Salud</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Médicos, fisioterapeutas, psicólogos, masajistas y más. Conecta con miles de pacientes.
+              <span className="font-bold text-purple-600"> Plan VIP desde $9.99/mes.</span>
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+              <li className="flex items-center gap-2">✅ Perfil destacado en el directorio médico</li>
+              <li className="flex items-center gap-2">✅ Anuncios contextuales según búsquedas</li>
+              <li className="flex items-center gap-2">✅ Canal directo con pacientes</li>
+              <li className="flex items-center gap-2">✅ Anuncios en Meta y Google</li>
+            </ul>
+            <button 
+              onClick={() => setActiveTab('plans')}
+              className="mt-4 text-sm font-bold text-purple-600 hover:underline flex items-center gap-1"
+            >
+              Ver planes VIP <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
     </>
   );
 
