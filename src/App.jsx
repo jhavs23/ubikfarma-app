@@ -15,6 +15,7 @@ import logoImg from "./assets/ubikfarma-logo.png";
 import PharmacyRegistrationForm from './components/PharmacyRegistrationForm';
 import PatientHistory from './components/PatientHistory';
 import { checkPatientLimit, incrementPatientUsage } from './utils/usageLimits';
+import OnboardingPage from './components/OnboardingPage'; // ✅ NUEVO
 
 const client = generateClient();
 
@@ -459,22 +460,14 @@ export default function App() {
           </div>
         );
       case 'onboarding':
+        // ✅ NUEVO: Usar el componente OnboardingPage
         return (
-          <div className="max-w-2xl mx-auto px-4 py-12">
-            <h2 className="text-3xl font-black text-center mb-8">¡Crea tu cuenta y elige tu plan!</h2>
-            <div className="bg-white rounded-2xl shadow p-6 space-y-4">
-              <input type="text" placeholder="Nombre completo" className="w-full border rounded-lg px-4 py-2" />
-              <input type="email" placeholder="Correo electrónico" className="w-full border rounded-lg px-4 py-2" />
-              <input type="password" placeholder="Contraseña" className="w-full border rounded-lg px-4 py-2" />
-              <select className="w-full border rounded-lg px-4 py-2">
-                <option value="paciente">Paciente</option>
-                <option value="farmacia">Farmacia</option>
-                <option value="doctor">Médico / Especialista</option>
-              </select>
-              <button className="w-full bg-emerald-600 text-white font-bold py-2 rounded-xl">Registrarse</button>
-              <p className="text-center text-sm">¿Ya tienes cuenta? <button onClick={() => setActiveTab('login')} className="text-blue-600 font-bold">Inicia sesión</button></p>
-            </div>
-          </div>
+          <OnboardingPage 
+            setActiveTab={setActiveTab}
+            setShowAuthModal={setShowAuthModal}
+            setAuthMode={setAuthMode}
+            setAuthError={setAuthError}
+          />
         );
       case 'plans':
         return (
@@ -490,7 +483,12 @@ export default function App() {
                   <li className="flex items-center gap-2">✅ 2 medicamentos por consulta</li>
                   <li className="flex items-center gap-2">✅ 2 respuestas por consulta</li>
                 </ul>
-                <button className="w-full mt-6 bg-blue-600 text-white font-bold py-2 rounded-xl">Seleccionar</button>
+                <button 
+                  onClick={() => setActiveTab('onboarding')}
+                  className="w-full mt-6 bg-blue-600 text-white font-bold py-2 rounded-xl"
+                >
+                  Seleccionar
+                </button>
               </div>
               {/* Plan Cliente Suscripción */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-emerald-500 hover:border-emerald-600 transition relative">
@@ -502,7 +500,12 @@ export default function App() {
                   <li className="flex items-center gap-2">✅ Medicamentos ilimitados</li>
                   <li className="flex items-center gap-2">✅ 4+ respuestas por consulta</li>
                 </ul>
-                <button className="w-full mt-6 bg-emerald-600 text-white font-bold py-2 rounded-xl">Suscribirse</button>
+                <button 
+                  onClick={() => setActiveTab('onboarding')}
+                  className="w-full mt-6 bg-emerald-600 text-white font-bold py-2 rounded-xl"
+                >
+                  Suscribirse
+                </button>
               </div>
               {/* Plan Farmacia Premium */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-500 hover:border-blue-600 transition">
@@ -514,7 +517,12 @@ export default function App() {
                   <li className="flex items-center gap-2">✅ Soporte 24/7</li>
                   <li className="flex items-center gap-2">✅ Alertas de publicidad Meta/Google</li>
                 </ul>
-                <button className="w-full mt-6 bg-blue-600 text-white font-bold py-2 rounded-xl">Contratar</button>
+                <button 
+                  onClick={() => setActiveTab('onboarding')}
+                  className="w-full mt-6 bg-blue-600 text-white font-bold py-2 rounded-xl"
+                >
+                  Contratar
+                </button>
               </div>
               {/* Plan Farmacia Pro */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-purple-500 hover:border-purple-600 transition">
@@ -525,7 +533,12 @@ export default function App() {
                   <li className="flex items-center gap-2">✅ Panel de estadísticas avanzadas</li>
                   <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
                 </ul>
-                <button className="w-full mt-6 bg-purple-600 text-white font-bold py-2 rounded-xl">Contratar</button>
+                <button 
+                  onClick={() => setActiveTab('onboarding')}
+                  className="w-full mt-6 bg-purple-600 text-white font-bold py-2 rounded-xl"
+                >
+                  Contratar
+                </button>
               </div>
               {/* Plan Médico VIP */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-teal-500 hover:border-teal-600 transition">
@@ -537,7 +550,12 @@ export default function App() {
                   <li className="flex items-center gap-2">✅ Canal directo con clientes</li>
                   <li className="flex items-center gap-2">✅ Anuncios en Meta y Google</li>
                 </ul>
-                <button className="w-full mt-6 bg-teal-600 text-white font-bold py-2 rounded-xl">Contratar</button>
+                <button 
+                  onClick={() => setActiveTab('onboarding')}
+                  className="w-full mt-6 bg-teal-600 text-white font-bold py-2 rounded-xl"
+                >
+                  Contratar
+                </button>
               </div>
             </div>
           </div>
@@ -554,7 +572,6 @@ export default function App() {
         <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
           Ubica, compara y <span className="text-blue-600">Compra...</span>
         </h1>
-        {/* 🔥 NUEVO SUBTÍTULO (MODIFICADO) */}
         <p className="text-sm sm:text-base text-slate-700 font-semibold mt-1.5">
           Compara precios y disponibilidad de medicamentos en tiempo real. Olvídate de recorrer farmacias: recibe cotizaciones desde tu ubicación, conoce los costos y elige la mejor opción en minutos.
         </p>
@@ -982,7 +999,7 @@ export default function App() {
               <li className="flex items-center gap-2">✅ Consultas ilimitadas por solo 0.99$ al mes</li>
             </ul>
             <button 
-              onClick={() => handleOpenAuthModal('register')}
+              onClick={() => setActiveTab('onboarding')} // ✅ CAMBIADO: apunta al onboarding
               className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
             >
               Regístrate Aquí. <ChevronRight className="w-4 h-4" />
@@ -996,7 +1013,6 @@ export default function App() {
               <Building2 className="w-6 h-6 text-emerald-600" />
             </div>
             <h3 className="text-xl font-black text-slate-900">Para Farmacias</h3>
-            {/* 🔥 NUEVA DESCRIPCIÓN (MODIFICADA) */}
             <p className="text-sm text-slate-600 mt-2">
               Conecta con pacientes de tu área que buscan tus productos. Responde con agilidad, digitaliza tus ventas y aumenta tu facturación sin complicaciones.
               <span className="font-bold text-emerald-600"> Planes desde $9.99/mes.</span>
@@ -1043,7 +1059,7 @@ export default function App() {
     </>
   );
 
-  // --- 🔥 MODAL DE AUTENTICACIÓN REAL (con diseño mejorado) ---
+  // --- 🔥 MODAL DE AUTENTICACIÓN REAL ---
   const renderAuthModal = () => {
     if (!showAuthModal) return null;
 
