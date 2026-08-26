@@ -712,7 +712,7 @@ export default function App() {
                           type="text"
                           value={item.medicine}
                           onChange={(e) => handleMedicineChange(item.id, 'medicine', e.target.value)}
-                          placeholder="placeholder="Ej. Acetaminofén (escribe solo uno)"
+                          placeholder="placeholder=Ej. Acetaminofén (escribe solo uno)"
                           className="w-full bg-white border border-slate-400 rounded-lg px-3.5 py-2.5 text-base font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
