@@ -554,8 +554,9 @@ export default function App() {
         <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
           Ubica, compara y <span className="text-blue-600">Compra...</span>
         </h1>
+        {/* 🔥 NUEVO SUBTÍTULO (MODIFICADO) */}
         <p className="text-sm sm:text-base text-slate-700 font-semibold mt-1.5">
-          Cotiza 1 o múltiples medicamentos en farmacias cercanas.
+          Compara precios y disponibilidad de medicamentos en tiempo real. Olvídate de recorrer farmacias: recibe cotizaciones desde tu ubicación, conoce los costos y elige la mejor opción en minutos.
         </p>
       </section>
 
@@ -953,8 +954,8 @@ export default function App() {
         </div>
       </main>
 
-      {/* 🏥 SECCIÓN INFORMATIVA: PARA QUIÉN ES UBIKFARMA (MOVIDA AL FINAL) */}
-      <div className="max-w-7xl mx-auto px-4 mt-8">
+      {/* 🏥 SECCIÓN INFORMATIVA (AL FINAL DE LA PÁGINA) */}
+      <div className="max-w-7xl mx-auto px-4 mt-8 mb-8">
         <h2 className="text-3xl font-black text-center text-slate-900 mb-2">
           ¿Para quién es <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>?
         </h2>
@@ -971,7 +972,7 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-900">Para Pacientes</h3>
             <p className="text-sm text-slate-600 mt-2">
               Cotiza medicamentos en segundos, compara precios y elige la farmacia más cercana. 
-              <span className="font-bold text-blue-600">consultas ilimitadas por 0.99$ al mes (Tasa BCV).</span>
+              <span className="font-bold text-blue-600"> consultas ilimitadas por 0.99$ al mes (Tasa BCV).</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li className="flex items-center gap-2">✅ Encuentra tu medicamento al mejor precio</li>
@@ -984,7 +985,7 @@ export default function App() {
               onClick={() => handleOpenAuthModal('register')}
               className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
             >
-              Regístrate Aquì. <ChevronRight className="w-4 h-4" />
+              Regístrate Aquí. <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -995,8 +996,9 @@ export default function App() {
               <Building2 className="w-6 h-6 text-emerald-600" />
             </div>
             <h3 className="text-xl font-black text-slate-900">Para Farmacias</h3>
+            {/* 🔥 NUEVA DESCRIPCIÓN (MODIFICADA) */}
             <p className="text-sm text-slate-600 mt-2">
-              Recibe solicitudes de pacientes en tu zona, responde con precios y haz crecer tu negocio.
+              Conecta con pacientes de tu área que buscan tus productos. Responde con agilidad, digitaliza tus ventas y aumenta tu facturación sin complicaciones.
               <span className="font-bold text-emerald-600"> Planes desde $9.99/mes.</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
