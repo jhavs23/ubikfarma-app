@@ -11,11 +11,14 @@ import { uploadData, getUrl } from 'aws-amplify/storage';
 
 import logoImg from "./assets/ubikfarma-logo.png";
 
-// Importación de módulos
+// Importación de módulos existentes
 import PharmacyRegistrationForm from './components/PharmacyRegistrationForm';
 import PatientHistory from './components/PatientHistory';
 import { checkPatientLimit, incrementPatientUsage } from './utils/usageLimits';
-import OnboardingPage from './components/OnboardingPage'; // ✅ NUEVO
+import OnboardingPage from './components/OnboardingPage';
+
+// ✅ NUEVA IMPORTACIÓN: Panel de Farmacia
+import PharmacyDashboard from './components/pharmacy/PharmacyDashboard';
 
 const client = generateClient();
 
@@ -460,7 +463,6 @@ export default function App() {
           </div>
         );
       case 'onboarding':
-        // ✅ NUEVO: Usar el componente OnboardingPage
         return (
           <OnboardingPage 
             setActiveTab={setActiveTab}
@@ -560,6 +562,17 @@ export default function App() {
             </div>
           </div>
         );
+      
+      // ✅ NUEVO CASO: Panel de Farmacia
+      case 'pharmacy_panel':
+        return (
+          <PharmacyDashboard 
+            pharmacyId={userSub}
+            pharmacyState={locationData.state || 'Aragua'}
+            pharmacyPlan={userPlan} // 'FREE', 'PREMIUM', 'PRO'
+          />
+        );
+
       default:
         return renderHome();
     }
@@ -999,7 +1012,7 @@ export default function App() {
               <li className="flex items-center gap-2">✅ Consultas ilimitadas por solo 0.99$ al mes</li>
             </ul>
             <button 
-              onClick={() => setActiveTab('onboarding')} // ✅ CAMBIADO: apunta al onboarding
+              onClick={() => setActiveTab('onboarding')}
               className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
             >
               Regístrate Aquí. <ChevronRight className="w-4 h-4" />
