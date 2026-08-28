@@ -8,7 +8,7 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
     password: '',
     confirmPassword: '',
     role: 'paciente',
-    plan: 'gratis',
+    plan: 'gratis', // para pacientes es gratis, para farmacias/médicos se selecciona
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +39,7 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
           userAttributes: {
             email,
             name: fullName,
+            // Podríamos guardar rol y plan como custom attributes, pero por ahora solo registramos
           },
         },
       });
@@ -79,7 +80,7 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
-      <h2 className="text-3xl font-black text-center mb-8">¡Crea tu cuenta y elige tu plan!</h2>
+      <h2 className="text-3xl font-black text-center mb-8">¡Crea tu cuenta gratis!</h2>
       <div className="bg-white rounded-2xl shadow p-8">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -140,26 +141,32 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
               onChange={handleChange}
               className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="paciente">Paciente</option>
-              <option value="farmacia">Farmacia</option>
-              <option value="doctor">Médico / Especialista</option>
+              <option value="paciente">Paciente (Gratis, consultas ilimitadas)</option>
+              <option value="farmacia">Farmacia (30 días gratis, luego plan de pago)</option>
+              <option value="doctor">Médico / Especialista (30 días gratis, luego plan VIP)</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Plan</label>
-            <select
-              name="plan"
-              value={formData.plan}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="gratis">Gratis (2 consultas/mes)</option>
-              <option value="paciente-premium">Paciente Premium - $0.99/mes</option>
-              <option value="farmacia-premium">Farmacia Premium - $9.99/mes</option>
-              <option value="farmacia-pro">Farmacia Pro - $19.99/mes</option>
-              <option value="doctor-vip">Médico VIP - $9.99/mes</option>
-            </select>
-          </div>
+          {formData.role !== 'paciente' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Plan</label>
+              <select
+                name="plan"
+                value={formData.plan}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {formData.role === 'farmacia' && (
+                  <>
+                    <option value="farmacia-premium">Premium - $9.99/mes (30 días gratis)</option>
+                    <option value="farmacia-pro">Pro - $19.99/mes (30 días gratis)</option>
+                  </>
+                )}
+                {formData.role === 'doctor' && (
+                  <option value="doctor-vip">VIP - $9.99/mes (30 días gratis)</option>
+                )}
+              </select>
+            </div>
+          )}
           {error && <p className="text-red-600 text-xs">{error}</p>}
           <button
             type="submit"

@@ -7,7 +7,6 @@ import {
   TrendingUp, TrendingDown, MessageCircle, Eye, X
 } from 'lucide-react';
 
-// Sonido de notificación (Web Audio API)
 const playNotificationSound = () => {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -25,10 +24,9 @@ const playNotificationSound = () => {
   }
 };
 
-// Cliente GraphQL (Amplify v6)
 const client = generateClient();
 
-const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
+const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan, setActiveTab }) => {
   const [quotes, setQuotes] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -42,7 +40,6 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
   const [notification, setNotification] = useState(null);
   const subscriptionRef = useRef(null);
 
-  // Cargar cotizaciones al montar
   useEffect(() => {
     fetchQuotes();
     subscribeToNewQuotes();
@@ -54,12 +51,12 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     };
   }, [pharmacyId, pharmacyState]);
 
-  // Obtener cotizaciones de la farmacia
   const fetchQuotes = async () => {
     try {
       const result = await client.graphql({
         query: listQuoteRequests,
-        variables: { filter: { state: { eq: pharmacyState } } }
+        variables: { filter: { state: { eq: pharmacyState } } },
+        authMode: 'apiKey'
       });
       const items = result.data.listQuoteRequests.items || [];
       setQuotes(items);
@@ -71,7 +68,6 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     }
   };
 
-  // Calcular estadísticas
   const calculateStats = (items) => {
     const total = items.length;
     const newQuotes = items.filter(q => q.status === 'OPEN').length;
@@ -90,19 +86,17 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     });
   };
 
-  // Calcular tiempo promedio de respuesta
   const calculateAvgResponseTime = (items) => {
     const respondedItems = items.filter(q => q.responses_count > 0);
     if (respondedItems.length === 0) return 0;
-    // Simulación: 0-30 minutos
     return Math.round(Math.random() * 30);
   };
 
-  // Suscripción a nuevas cotizaciones en tiempo real
   const subscribeToNewQuotes = () => {
     const subscription = client.graphql({
       query: onCreateQuoteRequest,
-      variables: { filter: { state: { eq: pharmacyState } } }
+      variables: { filter: { state: { eq: pharmacyState } } },
+      authMode: 'apiKey'
     }).subscribe({
       next: (event) => {
         const newQuote = event.data.onCreateQuoteRequest;
@@ -119,7 +113,6 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     subscriptionRef.current = subscription;
   };
 
-  // Mostrar notificación (con sonido)
   const showNotification = (quote) => {
     playNotificationSound();
     setNotification({
@@ -131,7 +124,6 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // Renderizar notificación flotante
   const renderNotification = () => {
     if (!notification) return null;
     return (
@@ -156,7 +148,6 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     );
   };
 
-  // Renderizar tarjetas de estadísticas
   const renderStats = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
@@ -221,7 +212,6 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
     </div>
   );
 
-  // Renderizar actividad reciente
   const renderRecentActivity = () => {
     const recent = quotes.slice(0, 5);
     return (
@@ -268,10 +258,31 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      {/* Notificación flotante */}
       {renderNotification()}
+      
+      {/* 🔥 Banner de upgrade para planes inferiores */}
+      {pharmacyPlan !== 'PRO' && (
+        <div className="mb-6 bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+              <h4 className="font-black text-purple-800 text-lg flex items-center gap-2">
+                <span className="text-2xl">🚀</span> ¡Actualiza a Pro!
+              </h4>
+              <p className="text-sm text-purple-700">
+                Desbloquea <span className="font-bold">estadísticas avanzadas, promociones y chat</span> con pacientes. 
+                {pharmacyPlan === 'PREMIUM' ? ' ¡Solo $10/mes más!' : ' Prueba 30 días gratis.'}
+              </p>
+            </div>
+            <button 
+              onClick={() => setActiveTab('plans')}  // ✅ Redirige a la página de planes
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg transition whitespace-nowrap text-sm"
+            >
+              Mejorar plan
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Encabezado */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Panel de Farmacia</h1>
@@ -284,10 +295,8 @@ const PharmacyDashboard = ({ pharmacyId, pharmacyState, pharmacyPlan }) => {
         </div>
       </div>
 
-      {/* Tarjetas de estadísticas */}
       {renderStats()}
 
-      {/* Actividad reciente */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           {renderRecentActivity()}

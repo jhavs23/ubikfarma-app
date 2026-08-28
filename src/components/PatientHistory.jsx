@@ -1,186 +1,150 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { listQuoteRequests } from '../graphql/queries';
+import { deleteQuoteRequest } from '../graphql/mutations';
+import { Trash2, Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 const client = generateClient();
 
-export default function PatientHistory({ patientId }) {
+const PatientHistory = ({ patientId }) => {
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Contador de uso mensual
-  const monthlyUsage = quotes.length; 
-  const freeLimit = 2;
-  const isProPlan = false; // Cambiar a true según la suscripción del usuario
+  const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(null); // id de la cotización que se está eliminando
 
   useEffect(() => {
-    if (patientId) {
-      fetchHistory();
-    }
+    fetchQuotes();
   }, [patientId]);
 
-  const fetchHistory = async () => {
+  const fetchQuotes = async () => {
     try {
+      setLoading(true);
       const result = await client.graphql({
         query: listQuoteRequests,
-        variables: {
-          filter: { patient_id: { eq: patientId } }
-        }
+        variables: { filter: { patient_id: { eq: patientId } } },
+        authMode: 'apiKey' // Para usuarios invitados también funciona
       });
-      setQuotes(result.data.listQuoteRequests.items || []);
+      const items = result.data.listQuoteRequests.items || [];
+      // Ordenar por fecha descendente (más reciente primero)
+      items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setQuotes(items);
     } catch (err) {
-      console.error('Error cargando historial:', err);
+      console.error('Error fetching history:', err);
+      setError('No se pudo cargar el historial.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Calcular horas transcurridas
-  const getHoursElapsed = (createdAt) => {
-    const diffMs = new Date() - new Date(createdAt);
-    return Math.floor(diffMs / (1000 * 60 * 60));
+  const handleDelete = async (quoteId) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar esta cotización?')) return;
+    
+    setDeleting(quoteId);
+    try {
+      await client.graphql({
+        query: deleteQuoteRequest,
+        variables: { input: { id: quoteId } },
+        authMode: 'apiKey'
+      });
+      // Actualizar la lista eliminando la cotización
+      setQuotes(quotes.filter(q => q.id !== quoteId));
+    } catch (err) {
+      console.error('Error deleting quote:', err);
+      alert('Error al eliminar la cotización. Intenta de nuevo.');
+    } finally {
+      setDeleting(null);
+    }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      
-      {/* 📊 BARRA DE USO DEL PLAN PACIENTE */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h3 className="text-white font-bold text-lg flex items-center gap-2">
-            📋 Mis Consultas de Medicamentos
-          </h3>
-          <p className="text-slate-400 text-sm">
-            {isProPlan 
-              ? '✨ Tienes acceso ILIMITADO con tu Plan Pro ($0.99/mes)' 
-              : `Has usado ${monthlyUsage} de ${freeLimit} consultas gratuitas este mes.`}
-          </p>
-        </div>
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'OPEN':
+        return <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">Nueva</span>;
+      case 'IN_PROGRESS':
+        return <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">En proceso</span>;
+      case 'CLOSED':
+        return <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-full">Cerrada</span>;
+      default:
+        return <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-0.5 rounded-full">{status}</span>;
+    }
+  };
 
-        {!isProPlan && (
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="w-32 bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
-              <div 
-                className={`h-full ${monthlyUsage >= freeLimit ? 'bg-red-500' : 'bg-emerald-500'}`}
-                style={{ width: `${Math.min((monthlyUsage / freeLimit) * 100, 100)}%` }}
-              />
-            </div>
-            {monthlyUsage >= freeLimit && (
-              <button className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg shadow-lg">
-                Activar Pro ($0.99)
-              </button>
-            )}
-          </div>
-        )}
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
+    );
+  }
 
-      {/* 📜 LISTADO DE SOLICITUDES E HISTORIAL */}
-      {loading ? (
-        <div className="text-center py-8 text-slate-400">Cargando tu historial...</div>
-      ) : quotes.length === 0 ? (
-        <div className="text-center py-12 bg-slate-900/50 rounded-xl border border-slate-800 text-slate-400">
-          No has realizado consultas de medicamentos todavía.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {quotes.map((quote) => {
-            const hoursOld = getHoursElapsed(quote.createdAt);
-            const isExpired = hoursOld > 48;
-            const isWarning = hoursOld >= 24 && hoursOld <= 48;
+  if (error) {
+    return <p className="text-red-600 text-center">{error}</p>;
+  }
 
-            return (
-              <div 
-                key={quote.id} 
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4"
-              >
-                {/* Cabecera del Item */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                  <div>
-                    <h4 className="text-lg font-bold text-emerald-400">
-                      {quote.medicine_name} <span className="text-slate-400 text-sm font-normal">({quote.dosage_mg})</span>
-                    </h4>
-                    <p className="text-xs text-slate-400">
-                      Cantidad: {quote.quantity} | Solicitado hace {hoursOld < 1 ? 'minutos' : `${hoursOld} horas`}
-                    </p>
-                  </div>
+  if (quotes.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+        <h3 className="text-xl font-black text-slate-700">📭 No tienes cotizaciones</h3>
+        <p className="text-slate-500 mt-2">Cuando envíes una cotización, aparecerá aquí.</p>
+      </div>
+    );
+  }
 
-                  {/* Badge de Estado / Semáforo de Tiempo */}
-                  <div>
-                    {isExpired ? (
-                      <span className="bg-red-950/80 text-red-400 border border-red-800/60 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        ⚠️ Presupuesto Expirado (&gt;48h)
-                      </span>
-                    ) : isWarning ? (
-                      <span className="bg-amber-950/80 text-amber-400 border border-amber-800/60 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        ⏳ Consultar Antes de Ir (24h-48h)
-                      </span>
-                    ) : (
-                      <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        🟢 Presupuesto Fresco
-                      </span>
-                    )}
-                  </div>
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-black text-slate-900">Mis Cotizaciones</h2>
+      <p className="text-sm text-slate-500">Tienes {quotes.length} cotización{quotes.length > 1 ? 'es' : ''}.</p>
+      
+      <div className="space-y-4">
+        {quotes.map((quote) => (
+          <div key={quote.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-lg font-bold text-slate-900">{quote.medicine_name}</h4>
+                  {getStatusBadge(quote.status)}
                 </div>
-
-                {/* Respuestas Recibidas de Farmacias */}
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Respuestas de Farmacias ({quote.responses?.items?.length || 0}):
+                <p className="text-sm text-slate-600">
+                  <span className="font-semibold">Dosis:</span> {quote.dosage_mg || 'No especificada'} | 
+                  <span className="font-semibold ml-2">Cantidad:</span> {quote.quantity || 1}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  <span className="font-semibold">Ubicación:</span> {quote.state}, {quote.city} - {quote.zone}
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Enviado: {new Date(quote.createdAt).toLocaleString()}
+                </p>
+                {quote.responses_count > 0 && (
+                  <p className="text-xs text-emerald-600 font-bold mt-1">
+                    💬 {quote.responses_count} respuesta{quote.responses_count > 1 ? 's' : ''}
                   </p>
-
-                  {quote.responses?.items?.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic py-2">Buscando farmacias cercanas con inventario...</p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {quote.responses.items.map((resp) => (
-                        <div key={resp.id} className="bg-slate-800/80 border border-slate-700/60 rounded-lg p-3 text-sm flex justify-between items-center">
-                          <div>
-                            <p className="font-bold text-white">{resp.pharmacy?.name}</p>
-                            <p className="text-xs text-slate-400">📍 {resp.pharmacy?.zone}</p>
-                            <p className="text-emerald-400 font-bold mt-1">
-                              ${resp.total_price_usd?.toFixed(2)} USD
-                            </p>
-                          </div>
-
-                          {/* Botón WhatsApp Directo */}
-                          <a
-                            href={`https://wa.me/${resp.pharmacy?.whatsapp}?text=Hola%20${encodeURIComponent(resp.pharmacy?.name)},%20vi%20su%20presupuesto%20de%20${encodeURIComponent(quote.medicine_name)}%20en%20Ubikfarma.`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors flex items-center gap-1"
-                          >
-                            💬 WhatsApp
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 🔘 BOTONES DE ACCIÓN INTELIGENTES */}
-                <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-end gap-3">
-                  {isExpired && (
-                    <button 
-                      onClick={() => alert(`Reagendando consulta para ${quote.medicine_name}...`)}
-                      className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1"
-                    >
-                      🔄 Retomar Presupuesto (Verificar Stock Actual)
-                    </button>
-                  )}
-
-                  <button 
-                    onClick={() => alert('Marcar como comprado')}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium px-3 py-2 rounded-lg"
-                  >
-                    ✅ Ya lo compré
-                  </button>
-                </div>
-
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button 
+                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-100 transition"
+                >
+                  <Eye className="w-4 h-4" /> Ver
+                </button>
+                <button 
+                  onClick={() => handleDelete(quote.id)}
+                  disabled={deleting === quote.id}
+                  className="text-xs font-bold text-red-600 hover:text-red-800 flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-100 transition disabled:opacity-50"
+                >
+                  {deleting === quote.id ? (
+                    <span className="inline-block animate-spin w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"></span>
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
-}
+};
+
+export default PatientHistory;

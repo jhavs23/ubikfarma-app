@@ -1,232 +1,236 @@
-import React, { useState } from 'react';
-import { generateClient } from 'aws-amplify/api';
-import { createPharmacyProfile } from '../graphql/mutations';
+import React from 'react';
+import { 
+  Building2, Zap, Users, TrendingUp, Package, 
+  Smartphone, Clock, Shield, ChevronRight, 
+  CheckCircle, Truck, BarChart3, Megaphone
+} from 'lucide-react';
 
-const client = generateClient();
+const PharmacyRegistrationForm = ({ setActiveTab }) => {
+  const benefits = [
+    {
+      icon: <Users className="w-8 h-8 text-emerald-600" />,
+      title: 'Más clientes, menos esfuerzo',
+      description: 'Conectamos tu farmacia con pacientes que buscan tus productos en tu zona. Olvídate de buscar clientes, ellos te encuentran a ti.'
+    },
+    {
+      icon: <Zap className="w-8 h-8 text-emerald-600" />,
+      title: 'Respuestas en 1 clic',
+      description: 'Recibe cotizaciones y responde con precios y disponibilidad en segundos. Tu inventario se sincroniza para que siempre tengas la información actualizada.'
+    },
+    {
+      icon: <TrendingUp className="w-8 h-8 text-emerald-600" />,
+      title: 'Aumenta tus ventas digitales',
+      description: 'Los pacientes comparan precios y eligen la mejor opción. Si tu oferta es competitiva, ganarás ventas sin salir de tu farmacia.'
+    },
+    {
+      icon: <Package className="w-8 h-8 text-emerald-600" />,
+      title: 'Vende más que medicamentos',
+      description: 'Publica insumos médicos, equipos, productos de cuidado personal y más. Amplía tu catálogo y multiplica tus ingresos.'
+    },
+    {
+      icon: <Clock className="w-8 h-8 text-emerald-600" />,
+      title: 'Ahorra tiempo y recursos',
+      description: 'Digitaliza tu atención: menos llamadas, menos visitas físicas, más eficiencia. Tu equipo se enfoca en lo importante.'
+    },
+    {
+      icon: <Shield className="w-8 h-8 text-emerald-600" />,
+      title: 'Clientes filtrados, conversiones reales',
+      description: 'Los pacientes que llegan ya están interesados y listos para comprar. Nuestro sistema filtra a los curiosos y te trae compradores activos.'
+    }
+  ];
 
-export default function PharmacyRegistrationForm({ userSub, onSuccess }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    rif: '',
-    phone: '',
-    whatsapp: '',
-    address: '',
-    state: 'Carabobo',
-    city: 'Valencia',
-    zone: 'El Trigal',
-    latitude: 10.2186,
-    longitude: -68.0063,
-    delivery_available: true,
-    pickup_available: true,
-  });
+  const plans = [
+    {
+      id: 'premium',
+      name: 'Premium',
+      price: '$9.99/mes',
+      features: [
+        'Cotizaciones ilimitadas',
+        'Prioridad en respuestas',
+        'Soporte 24/7',
+        'Alertas de publicidad Meta/Google',
+        'Perfil destacado en la zona'
+      ],
+      badge: 'Popular',
+      highlighted: true,
+      trial: '15 días gratis'
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: '$19.99/mes',
+      features: [
+        'Todo de Premium',
+        'Estadísticas avanzadas (gráficos, tendencias)',
+        'Publicidad destacada en Meta y Google',
+        'Múltiples usuarios (gerente + empleados)',
+        'Panel de control personalizado'
+      ],
+      badge: 'Recomendado',
+      highlighted: false,
+      trial: '15 días gratis'
+    }
+  ];
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      // Fecha de prueba de vencimiento inicial (30 días de gracia/prueba)
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 30);
-
-      const input = {
-        owner_id: userSub, // ID único del usuario autenticado en Cognito
-        name: formData.name,
-        rif: formData.rif.toUpperCase(),
-        phone: formData.phone,
-        whatsapp: formData.whatsapp,
-        address: formData.address,
-        state: formData.state,
-        city: formData.city,
-        zone: formData.zone,
-        latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude),
-        delivery_available: formData.delivery_available,
-        pickup_available: formData.pickup_available,
-        subscription_status: 'PENDING_APPROVAL', // Entra en estado pendiente de aprobación
-        subscription_expires_at: expirationDate.toISOString(),
-      };
-
-      const result = await client.graphql({
-        query: createPharmacyProfile,
-        variables: { input },
-      });
-
-      console.log('Farmacia registrada con éxito:', result);
-      if (onSuccess) onSuccess(result.data.createPharmacyProfile);
-    } catch (err) {
-      console.error('Error al registrar farmacia:', err);
-      setError('Hubo un problema al registrar la farmacia. Verifica los datos.');
-    } finally {
-      setLoading(false);
+  const handleSubscribe = (planId) => {
+    // Redirigir al onboarding con el plan pre-seleccionado (opcional)
+    // Por ahora solo cambiamos a la pestaña onboarding
+    if (setActiveTab) {
+      setActiveTab('onboarding');
+    } else {
+      // Fallback: recargar la página con hash o usar window.location
+      window.location.href = '/onboarding';
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 text-white rounded-xl p-6 shadow-xl">
-      <div className="mb-6 border-b border-slate-800 pb-4">
-        <h2 className="text-2xl font-bold text-emerald-400">Registro de Nueva Farmacia</h2>
-        <p className="text-slate-400 text-sm">Completa el perfil comercial para activar tus cotizaciones en Ubikfarma.</p>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg text-red-300 text-sm">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nombre Comercial</label>
-            <input
-              type="text"
-              name="name"
-              required
-              placeholder="Ej: Farmacia San Rafael"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
+    <div className="min-h-screen bg-slate-50">
+      {/* HERO */}
+      <section className="bg-gradient-to-br from-emerald-600 to-blue-600 text-white py-16 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex justify-center mb-4">
+            <Building2 className="w-16 h-16" />
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">RIF Jurídico</label>
-            <input
-              type="text"
-              name="rif"
-              required
-              placeholder="J-12345678-0"
-              value={formData.rif}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
+          <h1 className="text-4xl md:text-5xl font-black mb-4">
+            Digitaliza tu farmacia y <br />
+            <span className="text-emerald-200">multiplica tus ventas</span>
+          </h1>
+          <p className="text-xl max-w-2xl mx-auto opacity-90">
+            Conecta con miles de pacientes que buscan tus productos. Olvídate de perder ventas por no estar en el mundo digital.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => handleSubscribe('premium')}
+              className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
+            >
+              Probar 15 días gratis <ChevronRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleSubscribe('pro')}
+              className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
+            >
+              Ver planes <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Teléfono Principal</label>
-            <input
-              type="text"
-              name="phone"
-              required
-              placeholder="0241-8500000"
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+      {/* BENEFICIOS */}
+      <section className="py-16 px-4 max-w-6xl mx-auto">
+        <h2 className="text-3xl font-black text-center text-slate-900 mb-12">
+          ¿Por qué <span className="text-emerald-600">UBIKFARMA</span>?
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {benefits.map((benefit, idx) => (
+            <div key={idx} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition">
+              <div className="mb-3">{benefit.icon}</div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">{benefit.title}</h3>
+              <p className="text-sm text-slate-600">{benefit.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">WhatsApp de Ventas</label>
-            <input
-              type="text"
-              name="whatsapp"
-              required
-              placeholder="+584121234567"
-              value={formData.whatsapp}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
+      {/* CÓMO FUNCIONA */}
+      <section className="py-16 px-4 bg-white border-y border-slate-200">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-black text-center text-slate-900 mb-12">
+            ¿Cómo <span className="text-emerald-600">funciona</span>?
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-black text-emerald-700">1</span>
+              </div>
+              <h3 className="font-bold text-slate-900">Regístrate gratis</h3>
+              <p className="text-sm text-slate-600">Crea tu cuenta en minutos. Elige tu plan y activa tu prueba de 15 días.</p>
+            </div>
+            <div>
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-black text-emerald-700">2</span>
+              </div>
+              <h3 className="font-bold text-slate-900">Configura tu farmacia</h3>
+              <p className="text-sm text-slate-600">Sube tu logo, dirección, horarios y productos. Los pacientes te encontrarán.</p>
+            </div>
+            <div>
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-black text-emerald-700">3</span>
+              </div>
+              <h3 className="font-bold text-slate-900">Recibe y responde cotizaciones</h3>
+              <p className="text-sm text-slate-600">Los pacientes piden presupuestos, tú respondes con precio y disponibilidad. ¡Vende!</p>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">Dirección Física</label>
-          <textarea
-            name="address"
-            rows="2"
-            required
-            placeholder="Av. Bolivar, C.C. Norte, Local 12"
-            value={formData.address}
-            onChange={handleChange}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-          ></textarea>
+      {/* PLANES */}
+      <section className="py-16 px-4 max-w-6xl mx-auto">
+        <h2 className="text-3xl font-black text-center text-slate-900 mb-4">
+          Elige el plan ideal para tu farmacia
+        </h2>
+        <p className="text-center text-slate-600 mb-12">
+          Prueba 15 días gratis. Sin compromiso. Cancela cuando quieras.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {plans.map((plan) => (
+            <div
+              key={plan.id}
+              className={`bg-white rounded-2xl p-6 shadow-sm border-2 transition hover:shadow-md ${
+                plan.highlighted ? 'border-emerald-500' : 'border-slate-200'
+              } relative`}
+            >
+              {plan.badge && (
+                <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-black uppercase px-3 py-1 rounded-full ${
+                  plan.highlighted ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {plan.badge}
+                </span>
+              )}
+              <h3 className="text-2xl font-black text-slate-900 mt-2">{plan.name}</h3>
+              <p className="text-3xl font-bold text-emerald-600 mt-2">{plan.price}</p>
+              <p className="text-sm text-emerald-500 font-bold">{plan.trial}</p>
+              <ul className="mt-4 space-y-2">
+                {plan.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                    <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSubscribe(plan.id)}
+                className={`w-full mt-6 font-bold py-3 rounded-xl transition ${
+                  plan.highlighted
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-slate-800 hover:bg-slate-900 text-white'
+                }`}
+              >
+                Probar 15 días gratis
+              </button>
+            </div>
+          ))}
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Estado</label>
-            <input
-              type="text"
-              name="state"
-              required
-              value={formData.state}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Ciudad</label>
-            <input
-              type="text"
-              name="city"
-              required
-              value={formData.city}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Zona / Parroquia</label>
-            <input
-              type="text"
-              name="zone"
-              required
-              value={formData.zone}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+      {/* CALL TO ACTION FINAL */}
+      <section className="bg-emerald-600 text-white py-16 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-black mb-4">
+            ¿Listo para digitalizar tu farmacia?
+          </h2>
+          <p className="text-lg opacity-90 mb-6">
+            Únete a cientos de farmacias que ya están vendiendo más con UBIKFARMA.
+          </p>
+          <button
+            onClick={() => handleSubscribe('premium')}
+            className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:scale-105 inline-flex items-center gap-2"
+          >
+            Probar 15 días gratis <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
-
-        <div className="flex items-center gap-6 pt-2">
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
-            <input
-              type="checkbox"
-              name="delivery_available"
-              checked={formData.delivery_available}
-              onChange={handleChange}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
-            />
-            Ofrece Delivery
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
-            <input
-              type="checkbox"
-              name="pickup_available"
-              checked={formData.pickup_available}
-              onChange={handleChange}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
-            />
-            Retiro en Tienda
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 font-semibold py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 text-white"
-        >
-          {loading ? 'Registrando Farmacia...' : 'Completar Registro'}
-        </button>
-      </form>
+      </section>
     </div>
   );
-}
+};
+
+export default PharmacyRegistrationForm;

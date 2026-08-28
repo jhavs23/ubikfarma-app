@@ -17,8 +17,19 @@ import PatientHistory from './components/PatientHistory';
 import { checkPatientLimit, incrementPatientUsage } from './utils/usageLimits';
 import OnboardingPage from './components/OnboardingPage';
 
-// ✅ NUEVA IMPORTACIÓN: Panel de Farmacia
+// ✅ NUEVAS IMPORTACIONES: Todos los módulos del panel de farmacia
+import PharmacySidebar from './components/pharmacy/PharmacySidebar';
 import PharmacyDashboard from './components/pharmacy/PharmacyDashboard';
+import PharmacyQuotesList from './components/pharmacy/PharmacyQuotesList';
+import PharmacyQuoteReply from './components/pharmacy/PharmacyQuoteReply';
+import PharmacyInventory from './components/pharmacy/PharmacyInventory';
+import PharmacyProfile from './components/pharmacy/PharmacyProfile';
+import PharmacyPromotions from './components/pharmacy/PharmacyPromotions';
+import PharmacyStats from './components/pharmacy/PharmacyStats';
+import PharmacyChat from './components/pharmacy/PharmacyChat';
+
+// ✅ Importar PatientFeed (nueva experiencia tipo app para pacientes)
+import PatientFeed from './components/PatientFeed/PatientFeed';
 
 const client = generateClient();
 
@@ -37,12 +48,26 @@ const SPECIALTIES = [
 ];
 
 const PRESENTATIONS = [
-  "Tabletas / Comprimidos", "Cápsulas Blandas", "Jarabes", 
-  "Suspensiones Pediátricas", "Cremas / Geles Tópicos", 
-  "Óvulos / Supositorios", "Parches Transdérmicos", 
-  "Ampollas / Inyectables", "Gotas Oftálmicas / Otológicas", 
-  "Inhaladores / Sprays", "Soluciones Fisiológicas", 
-  "Insumos Médicos (Sillas de Ruedas, Muletas, etc.)", "Otro..."
+  'Tabletas / Comprimidos',
+  'Cápsulas Blandas',
+  'Jarabes',
+  'Suspensiones Pediátricas',
+  'Cremas / Geles Tópicos',
+  'Óvulos / Supositorios',
+  'Parches Transdérmicos',
+  'Ampollas / Inyectables',
+  'Gotas Oftálmicas / Otológicas',
+  'Inhaladores / Sprays',
+  'Soluciones Fisiológicas',
+  'Insumos Médicos (Sillas de Ruedas, Muletas, etc.)',
+  'Equipos de Diagnóstico (Glucómetros, Tensiómetros)',
+  'Material de Curación (Gasas, Vendas, Apósitos)',
+  'Productos de Ortodoncia',
+  'Suplementos Nutricionales',
+  'Productos de Higiene y Cuidado Personal',
+  'Medicamentos Homeopáticos',
+  'Productos Naturales / Herbolarios',
+  'Otro',
 ];
 
 // Datos mock de doctores
@@ -117,7 +142,7 @@ const DOCTORS_DATA = [
 
 export default function App() {
   // Estado de navegación
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('pharmacy_panel'); // ← Temporal para pruebas
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [useGps, setUseGps] = useState(false);
   const [rateBcv] = useState(772.54);
@@ -139,6 +164,9 @@ export default function App() {
     referencePoint: ''
   });
 
+  // ✅ NUEVO: Guardar coordenadas GPS
+  const [gpsCoords, setGpsCoords] = useState({ lat: null, lng: null });
+
   // Filtros de doctores
   const [doctorFilter, setDoctorFilter] = useState({
     specialty: '',
@@ -150,12 +178,22 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
 
-  // Estado para límites del usuario
-  const [userPlan, setUserPlan] = useState('FREE');
-  const [remainingRequests, setRemainingRequests] = useState(2);
+  // ⚠️ ESTADO DEL PLAN DEL USUARIO (FORZADO A PRO PARA PRUEBAS)
+  // 🔴 PARA PRODUCCIÓN: Cambia 'PRO' a 'FREE' y descomenta la línea de checkPatientLimit
+  const [userPlan, setUserPlan] = useState('PRO'); // ← Forzado PRO para pruebas
+  const [remainingRequests, setRemainingRequests] = useState(999);
 
   // Estado para mensajes de error en el modal
   const [authError, setAuthError] = useState('');
+
+  // ✅ NUEVOS ESTADOS PARA EL PANEL DE FARMACIA
+  const [pharmacyTab, setPharmacyTab] = useState('dashboard');
+  const [pharmacyData] = useState({
+    name: 'Farmacia Botica Central',
+    logo: null,
+    notificationCount: 3,
+    id: 'farmacia-123', // ID de prueba (luego se obtiene del perfil)
+  });
 
   // Datos mock
   const mockQuotes = [
@@ -232,12 +270,17 @@ export default function App() {
     ));
   };
 
+  // ✅ ACTUALIZADO: Guardar coordenadas GPS
   const handleGpsToggle = () => {
     if (!useGps) {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setUseGps(true);
+            setGpsCoords({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude
+            });
             setLocationData(prev => ({
               ...prev,
               referencePoint: `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`
@@ -248,6 +291,11 @@ export default function App() {
       }
     } else {
       setUseGps(false);
+      setGpsCoords({ lat: null, lng: null });
+      setLocationData(prev => ({
+        ...prev,
+        referencePoint: ''
+      }));
     }
   };
 
@@ -259,24 +307,30 @@ export default function App() {
         const sub = user.userId;
         setUserSub(sub);
         setIsAuthenticated(true);
-        const data = await checkPatientLimit(sub);
-        setUserPlan(data.plan);
-        setRemainingRequests(data.remainingRequests);
-        console.log("✅ Usuario autenticado:", sub);
+        
+        // 🔴 PARA PRODUCCIÓN: Descomenta estas líneas y comenta las de abajo
+        // const data = await checkPatientLimit(sub);
+        // setUserPlan(data.plan || 'FREE');
+        // setRemainingRequests(data.remainingRequests);
+        
+        // 🔴 PARA PRUEBAS: Forzamos PRO para ver todos los módulos
+        setUserPlan('PRO');
+        setRemainingRequests(999);
+        console.log("✅ Usuario autenticado (PRO forzado):", sub);
       } catch (error) {
         const guestId = "guest-" + Date.now();
         setUserSub(guestId);
         setIsAuthenticated(false);
-        const data = await checkPatientLimit(guestId);
-        setUserPlan(data.plan);
-        setRemainingRequests(data.remainingRequests);
+        // Invitados también tienen acceso ilimitado
+       setUserPlan('PRO');
+        setRemainingRequests(999);
         console.log("👤 Usuario invitado:", guestId);
       }
     };
     checkUser();
   }, []);
 
-  // --- Envío de cotización ---
+  // --- Envío de cotización (SIN LÍMITES PARA PACIENTES) ---
   const handleSendQuote = async (e) => {
     e.preventDefault();
 
@@ -286,15 +340,7 @@ export default function App() {
       return;
     }
 
-    if (userPlan === 'FREE' && validMedicines.length > 2) {
-      alert("Como usuario gratuito, solo puedes cotizar hasta 2 medicamentos por consulta. Suscríbete por $0.99/mes para cotizar más.");
-      return;
-    }
-
-    if (remainingRequests <= 0) {
-      alert("Has alcanzado el límite de 2 consultas gratis este mes. Suscríbete por $0.99/mes para consultas ilimitadas.");
-      return;
-    }
+    // 🔥 Ya no hay límites para pacientes, eliminamos las validaciones
 
     let prescriptionImageUrl = null;
     const fileInput = document.querySelector('input[type="file"]');
@@ -335,7 +381,7 @@ export default function App() {
     const allMedicinesJSON = JSON.stringify(validMedicines);
 
     try {
-      const maxResponses = userPlan === 'FREE' ? 2 : 4;
+      const maxResponses = 10; // Siempre 10 respuestas máximas (puede ser fijo)
       const inputData = {
         patient_id: userSub,
         patient_name: "",
@@ -349,8 +395,8 @@ export default function App() {
         state: locationData.state,
         city: locationData.city,
         zone: locationData.parish || locationData.zone || "N/A",
-        latitude: null,
-        longitude: null,
+        latitude: gpsCoords.lat || null,
+        longitude: gpsCoords.lng || null,
         is_guest: !isAuthenticated,
         max_responses_allowed: maxResponses,
         status: "OPEN",
@@ -364,9 +410,7 @@ export default function App() {
         authMode: 'apiKey'
       });
 
-      await incrementPatientUsage(userSub);
-      setRemainingRequests(prev => prev - 1);
-
+      // Ya no incrementamos límite
       if (fileInput) {
         fileInput.value = '';
       }
@@ -394,9 +438,8 @@ export default function App() {
       setIsAuthenticated(false);
       const guestId = "guest-" + Date.now();
       setUserSub(guestId);
-      const data = await checkPatientLimit(guestId);
-      setUserPlan(data.plan);
-      setRemainingRequests(data.remainingRequests);
+      setUserPlan('FREE');
+      setRemainingRequests(999);
       alert("Sesión cerrada correctamente.");
     } catch (error) {
       alert("Error al cerrar sesión: " + error.message);
@@ -441,13 +484,7 @@ export default function App() {
             >
               ← Volver al buscador
             </button>
-            <PharmacyRegistrationForm 
-              userSub={userSub || "guest"} 
-              onSuccess={() => {
-                alert('¡Farmacia registrada!');
-                setActiveTab('home');
-              }} 
-            />
+            <PharmacyRegistrationForm setActiveTab={setActiveTab} />
           </div>
         );
       case 'login':
@@ -476,102 +513,134 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 py-12">
             <h2 className="text-3xl font-black text-center mb-8">Elige tu plan ideal</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Plan Cliente Gratuito */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-slate-200 hover:border-blue-500 transition">
-                <h3 className="text-xl font-black">Cliente Gratuito</h3>
-                <p className="text-3xl font-bold my-4">$0</p>
+              {/* Plan Paciente Gratuito */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-500 hover:border-blue-600 transition">
+                <h3 className="text-xl font-black">Paciente Gratuito</h3>
+                <p className="text-3xl font-bold text-emerald-600 my-4">$0</p>
                 <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">✅ 2 consultas/mes</li>
-                  <li className="flex items-center gap-2">✅ 2 medicamentos por consulta</li>
-                  <li className="flex items-center gap-2">✅ 2 respuestas por consulta</li>
+                  <li className="flex items-center gap-2">✅ Consultas ilimitadas</li>
+                  <li className="flex items-center gap-2">✅ Historial de cotizaciones</li>
+                  <li className="flex items-center gap-2">✅ Notificaciones de respuestas</li>
+                  <li className="flex items-center gap-2">✅ Sin costo</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
                   className="w-full mt-6 bg-blue-600 text-white font-bold py-2 rounded-xl"
                 >
-                  Seleccionar
+                  Registrarse gratis
                 </button>
               </div>
-              {/* Plan Cliente Suscripción */}
+
+              {/* Plan Farmacia Premium */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-emerald-500 hover:border-emerald-600 transition relative">
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-black px-3 py-1 rounded-full">Popular</span>
-                <h3 className="text-xl font-black">Cliente Suscripción</h3>
-                <p className="text-3xl font-bold my-4">$0.99<small className="text-base font-normal text-slate-500">/mes</small></p>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">✅ Consultas ilimitadas</li>
-                  <li className="flex items-center gap-2">✅ Medicamentos ilimitados</li>
-                  <li className="flex items-center gap-2">✅ 4+ respuestas por consulta</li>
-                </ul>
-                <button 
-                  onClick={() => setActiveTab('onboarding')}
-                  className="w-full mt-6 bg-emerald-600 text-white font-bold py-2 rounded-xl"
-                >
-                  Suscribirse
-                </button>
-              </div>
-              {/* Plan Farmacia Premium */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-500 hover:border-blue-600 transition">
                 <h3 className="text-xl font-black">Farmacia Premium</h3>
                 <p className="text-3xl font-bold my-4">$9.99<small className="text-base font-normal text-slate-500">/mes</small></p>
-                <ul className="space-y-2 text-sm">
+                <p className="text-sm text-emerald-500 font-bold">30 días gratis</p>
+                <ul className="mt-3 space-y-2 text-sm">
                   <li className="flex items-center gap-2">✅ Cotizaciones ilimitadas</li>
                   <li className="flex items-center gap-2">✅ Prioridad en respuestas</li>
                   <li className="flex items-center gap-2">✅ Soporte 24/7</li>
-                  <li className="flex items-center gap-2">✅ Alertas de publicidad Meta/Google</li>
+                  <li className="flex items-center gap-2">✅ Perfil destacado</li>
+                  <li className="flex items-center gap-2">✅ Inventario básico</li>
+                  <li className="flex items-center gap-2">✅ Dashboard</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
-                  className="w-full mt-6 bg-blue-600 text-white font-bold py-2 rounded-xl"
+                  className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl"
                 >
-                  Contratar
+                  Probar 30 días gratis
                 </button>
               </div>
+
               {/* Plan Farmacia Pro */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-purple-500 hover:border-purple-600 transition">
                 <h3 className="text-xl font-black">Farmacia Pro</h3>
                 <p className="text-3xl font-bold my-4">$19.99<small className="text-base font-normal text-slate-500">/mes</small></p>
-                <ul className="space-y-2 text-sm">
+                <p className="text-sm text-emerald-500 font-bold">30 días gratis</p>
+                <ul className="mt-3 space-y-2 text-sm">
                   <li className="flex items-center gap-2">✅ Todo de Premium</li>
-                  <li className="flex items-center gap-2">✅ Panel de estadísticas avanzadas</li>
-                  <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
+                  <li className="flex items-center gap-2">✅ Estadísticas avanzadas</li>
+                  <li className="flex items-center gap-2">✅ Promociones y descuentos</li>
+                  <li className="flex items-center gap-2">✅ Chat con pacientes</li>
+                  <li className="flex items-center gap-2">✅ Múltiples usuarios (gerente+empleados)</li>
+                  <li className="flex items-center gap-2">✅ Publicidad destacada</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
-                  className="w-full mt-6 bg-purple-600 text-white font-bold py-2 rounded-xl"
+                  className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl"
                 >
-                  Contratar
+                  Probar 30 días gratis
                 </button>
               </div>
+
               {/* Plan Médico VIP */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-teal-500 hover:border-teal-600 transition">
                 <h3 className="text-xl font-black">Médico VIP</h3>
                 <p className="text-3xl font-bold my-4">$9.99<small className="text-base font-normal text-slate-500">/mes</small></p>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">✅ Perfil destacado</li>
+                <p className="text-sm text-emerald-500 font-bold">30 días gratis</p>
+                <ul className="mt-3 space-y-2 text-sm">
+                  <li className="flex items-center gap-2">✅ Perfil destacado en el directorio</li>
                   <li className="flex items-center gap-2">✅ Anuncios contextuales</li>
-                  <li className="flex items-center gap-2">✅ Canal directo con clientes</li>
-                  <li className="flex items-center gap-2">✅ Anuncios en Meta y Google</li>
+                  <li className="flex items-center gap-2">✅ Canal directo con pacientes</li>
+                  <li className="flex items-center gap-2">✅ Publicidad en Meta/Google</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
-                  className="w-full mt-6 bg-teal-600 text-white font-bold py-2 rounded-xl"
+                  className="w-full mt-6 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-xl"
                 >
-                  Contratar
+                  Probar 30 días gratis
                 </button>
               </div>
             </div>
           </div>
         );
       
-      // ✅ NUEVO CASO: Panel de Farmacia
-      case 'pharmacy_panel':
-        return (
+      // ✅ PANEL DE FARMACIA CON SIDEBAR Y BLOQUEO DE MÓDULOS (CON setActiveTab PASADO)
+// ✅ PANEL DE FARMACIA CON SIDEBAR Y BLOQUEO DE MÓDULOS (CON setActiveTab PASADO)
+case 'pharmacy_panel':
+  console.log('🔵 PharmacyPanel: pharmacyTab =', pharmacyTab, 'userPlan =', userPlan);
+  return (
+    <div className="flex min-h-screen bg-slate-50">
+      <PharmacySidebar 
+        activeTab={pharmacyTab}
+        setActiveTab={setPharmacyTab}
+        pharmacyName={pharmacyData.name}
+        logoUrl={pharmacyData.logo}
+        notificationCount={pharmacyData.notificationCount}
+        userPlan={userPlan}
+      />
+      <div className="flex-1 ml-0 md:ml-64 p-4 transition-all">
+        {pharmacyTab === 'dashboard' && (
           <PharmacyDashboard 
             pharmacyId={userSub}
             pharmacyState={locationData.state || 'Aragua'}
-            pharmacyPlan={userPlan} // 'FREE', 'PREMIUM', 'PRO'
+            pharmacyPlan={userPlan}
+            setActiveTab={setActiveTab}
           />
-        );
+        )}
+        {pharmacyTab === 'quotes' && (
+          <PharmacyQuotesList 
+            pharmacyState={locationData.state || 'Aragua'}
+            pharmacyId={pharmacyData.id || userSub}
+          />
+        )}
+        {pharmacyTab === 'inventory' && <PharmacyInventory pharmacyId={pharmacyData.id || userSub} />}
+        {pharmacyTab === 'profile' && <PharmacyProfile pharmacyId={userSub} />}
+        
+        {/* 🔒 Módulos bloqueados según el plan */}
+        {pharmacyTab === 'promotions' && (userPlan === 'PREMIUM' || userPlan === 'PRO') && (
+          <PharmacyPromotions pharmacyId={pharmacyData.id || userSub} />
+        )}
+        {pharmacyTab === 'stats' && <PharmacyStats pharmacyState={locationData.state || 'Aragua'} />}
+        {pharmacyTab === 'chat' && userPlan === 'PRO' && <PharmacyChat />}
+      </div>
+    </div>
+  );
+
+      // ✅ NUEVO CASO: PatientFeed (experiencia tipo app para pacientes)
+      case 'patient_feed':
+        return <PatientFeed userSub={userSub} setActiveTab={setActiveTab} />;
 
       default:
         return renderHome();
@@ -590,24 +659,22 @@ export default function App() {
         </p>
       </section>
 
-      {/* 🔥 BANNER DE LÍMITES PARA USUARIOS GRATUITOS */}
-      {userPlan === 'FREE' && (
-        <div className="max-w-7xl mx-auto px-4 mt-2">
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 text-center shadow-sm">
-            <p className="text-sm sm:text-base font-medium text-amber-800">
-              ⚡ Como usuario gratuito, puedes realizar hasta <span className="font-black text-amber-900">2 consultas al mes</span> (máximo <span className="font-black text-amber-900">2 medicamentos por consulta</span>).
-              Te quedan <span className="font-black text-amber-900">{remainingRequests}</span> consultas este mes.
-              Suscríbete por solo <span className="font-black text-amber-900">$0.99/mes</span> para consultas ilimitadas y más respuestas.
-              <button 
-                onClick={() => handleOpenAuthModal('register')}
-                className="ml-2 text-sm sm:text-base font-bold text-blue-700 hover:underline"
-              >
-                ¡Suscríbete ahora!
-              </button>
-            </p>
-          </div>
+      {/* 🔥 BANNER INFORMATIVO PARA REGISTRO (sin límites) */}
+      <div className="max-w-7xl mx-auto px-4 mt-2">
+        <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border-2 border-blue-200 rounded-xl p-4 text-center shadow-sm">
+          <p className="text-sm sm:text-base font-medium text-slate-700">
+            🎉 <span className="font-black text-blue-700">¡Regístrate gratis!</span> 
+            Disfruta de <span className="font-black text-emerald-700">consultas ilimitadas</span>, 
+            historial de cotizaciones y notificaciones en tiempo real. 
+            <button 
+              onClick={() => setActiveTab('onboarding')}
+              className="ml-2 text-sm sm:text-base font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-1 rounded-full transition"
+            >
+              Crear cuenta gratuita
+            </button>
+          </p>
         </div>
-      )}
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* FORMULARIO DE BÚSQUEDA */}
@@ -840,22 +907,22 @@ export default function App() {
                 );
               })}
 
-              {/* 🔥 BOTÓN DE SUSCRIPCIÓN */}
+              {/* 🔥 BOTÓN DE REGISTRO GRATUITO */}
               <div className="mt-4 pt-4 border-t border-slate-200 text-center">
                 <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-xl p-4 border border-blue-200 shadow-sm">
-                  <h4 className="font-black text-slate-950 text-base">¡Desbloquea más cotizaciones!</h4>
-                  <p className="text-xs font-semibold text-slate-600 mb-3">Crea tu cuenta para recibir cotizaciones ilimitadas.</p>
+                  <h4 className="font-black text-slate-950 text-base">💡 ¿Quieres ver todas las cotizaciones?</h4>
+                  <p className="text-xs font-semibold text-slate-600 mb-3">Regístrate gratis y recibe respuestas ilimitadas.</p>
                   <button 
-                    onClick={() => handleOpenAuthModal('register')}
+                    onClick={() => setActiveTab('onboarding')}
                     className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-black text-sm py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2"
                   >
                     <UserPlus className="w-5 h-5" />
-                    Suscribirse por $0.99/mes
+                    Crear cuenta gratuita
                   </button>
                 </div>
               </div>
 
-              {/* Cotizaciones bloqueadas */}
+              {/* Cotizaciones bloqueadas (simuladas) */}
               <div className="relative pt-1 border-t border-slate-200">
                 <div className="space-y-3 filter blur-[4px] pointer-events-none opacity-30">
                   {mockQuotes.slice(2).map((quote) => (
@@ -1002,14 +1069,14 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-900">Para Pacientes</h3>
             <p className="text-sm text-slate-600 mt-2">
               Cotiza medicamentos en segundos, compara precios y elige la farmacia más cercana. 
-              <span className="font-bold text-blue-600"> consultas ilimitadas por 0.99$ al mes (Tasa BCV).</span>
+              <span className="font-bold text-blue-600"> Consultas ilimitadas y GRATIS.</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li className="flex items-center gap-2">✅ Encuentra tu medicamento al mejor precio</li>
               <li className="flex items-center gap-2">✅ Recibe respuestas de varias farmacias</li>
               <li className="flex items-center gap-2">✅ Sube tu receta médica de forma segura</li>
-              <li className="flex items-center gap-2">✅ Gratis solo 2 consultas al mes</li>
-              <li className="flex items-center gap-2">✅ Consultas ilimitadas por solo 0.99$ al mes</li>
+              <li className="flex items-center gap-2">✅ Historial de cotizaciones</li>
+              <li className="flex items-center gap-2">✅ Notificaciones de respuestas</li>
             </ul>
             <button 
               onClick={() => setActiveTab('onboarding')}
@@ -1028,7 +1095,7 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-900">Para Farmacias</h3>
             <p className="text-sm text-slate-600 mt-2">
               Conecta con pacientes de tu área que buscan tus productos. Responde con agilidad, digitaliza tus ventas y aumenta tu facturación sin complicaciones.
-              <span className="font-bold text-emerald-600"> Planes desde $9.99/mes.</span>
+              <span className="font-bold text-emerald-600"> Planes desde $9.99/mes (30 días gratis).</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li className="flex items-center gap-2">✅ Cotizaciones ilimitadas (Premium/Pro)</li>
@@ -1037,7 +1104,7 @@ export default function App() {
               <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
             </ul>
             <button 
-              onClick={() => setActiveTab('plans')}
+              onClick={() => setActiveTab('pharmacy_register')}
               className="mt-4 text-sm font-bold text-emerald-600 hover:underline flex items-center gap-1"
             >
               Ver planes <ChevronRight className="w-4 h-4" />
@@ -1052,7 +1119,7 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-900">Para Profesionales de la Salud</h3>
             <p className="text-sm text-slate-600 mt-2">
               Médicos, fisioterapeutas, psicólogos, masajistas y más. Conecta con miles de pacientes.
-              <span className="font-bold text-purple-600"> Plan VIP desde $9.99/mes.</span>
+              <span className="font-bold text-purple-600"> Plan VIP desde $9.99/mes (30 días gratis).</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li className="flex items-center gap-2">✅ Perfil destacado en el directorio médico</li>
@@ -1087,9 +1154,12 @@ export default function App() {
         const user = await getCurrentUser();
         setUserSub(user.userId);
         setIsAuthenticated(true);
-        const data = await checkPatientLimit(user.userId);
-        setUserPlan(data.plan);
-        setRemainingRequests(data.remainingRequests);
+        // 🔴 PARA PRODUCCIÓN: Descomenta estas líneas
+        // const data = await checkPatientLimit(user.userId);
+        // setUserPlan(data.plan || 'FREE');
+        // setRemainingRequests(data.remainingRequests);
+        setUserPlan('PRO');
+        setRemainingRequests(999);
         alert("✅ Inicio de sesión exitoso");
       } catch (error) {
         setAuthError(error.message);
