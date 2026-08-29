@@ -1,9 +1,10 @@
-import { signIn, signUp, signOut, getCurrentUser } from 'aws-amplify/auth';
+import { signIn, signOut, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
 import React, { useState, useEffect } from 'react';
 import { 
   Search, MapPin, Navigation, Upload, Sparkles, Stethoscope, Building2, User, Lock, 
   Menu, X, Plus, Trash2, Hospital, ShoppingBag, ExternalLink, PhoneCall, ChevronRight, History,
-  Heart, Bell, Filter, Users, LogIn, UserPlus, CreditCard, LayoutDashboard, ArrowLeft
+  Heart, Bell, Filter, Users, LogIn, UserPlus, CreditCard, LayoutDashboard, ArrowLeft,
+  Eye, EyeOff
 } from 'lucide-react';
 import { generateClient } from 'aws-amplify/api';
 import { createQuoteRequest } from './graphql/mutations';
@@ -30,6 +31,9 @@ import PharmacyChat from './components/pharmacy/PharmacyChat';
 
 // ✅ Importar PatientFeed (nueva experiencia tipo app para pacientes)
 import PatientFeed from './components/PatientFeed/PatientFeed';
+
+// ✅ Nueva página para médicos
+import DoctorRegistrationForm from './components/DoctorRegistrationForm';
 
 const client = generateClient();
 
@@ -70,7 +74,7 @@ const PRESENTATIONS = [
   'Otro',
 ];
 
-// Datos mock de doctores
+// Datos mock de doctores (para el directorio)
 const DOCTORS_DATA = [
   {
     id: 1,
@@ -141,17 +145,15 @@ const DOCTORS_DATA = [
 ];
 
 export default function App() {
-  // Estado de navegación
-  const [activeTab, setActiveTab] = useState('pharmacy_panel'); // ← Temporal para pruebas
+  const [activeTab, setActiveTab] = useState('patient_feed');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [useGps, setUseGps] = useState(false);
   const [rateBcv] = useState(772.54);
 
-  // 🔥 ESTADOS DE AUTENTICACIÓN
   const [userSub, setUserSub] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
-  // Estado del formulario de cotización
   const [medicinesList, setMedicinesList] = useState([
     { id: 1, medicine: '', dosage: '', presentation: 'Tabletas / Comprimidos', quantity: 1 }
   ]);
@@ -164,38 +166,29 @@ export default function App() {
     referencePoint: ''
   });
 
-  // ✅ NUEVO: Guardar coordenadas GPS
   const [gpsCoords, setGpsCoords] = useState({ lat: null, lng: null });
-
-  // Filtros de doctores
   const [doctorFilter, setDoctorFilter] = useState({
     specialty: '',
     state: '',
     search: ''
   });
 
-  // Estado para el modal de suscripción/login
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
-
-  // ⚠️ ESTADO DEL PLAN DEL USUARIO (FORZADO A PRO PARA PRUEBAS)
-  // 🔴 PARA PRODUCCIÓN: Cambia 'PRO' a 'FREE' y descomenta la línea de checkPatientLimit
-  const [userPlan, setUserPlan] = useState('PRO'); // ← Forzado PRO para pruebas
+  const [userPlan, setUserPlan] = useState('PRO');
   const [remainingRequests, setRemainingRequests] = useState(999);
-
-  // Estado para mensajes de error en el modal
   const [authError, setAuthError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loadingLogin, setLoadingLogin] = useState(false);
 
-  // ✅ NUEVOS ESTADOS PARA EL PANEL DE FARMACIA
   const [pharmacyTab, setPharmacyTab] = useState('dashboard');
   const [pharmacyData] = useState({
     name: 'Farmacia Botica Central',
     logo: null,
     notificationCount: 3,
-    id: 'farmacia-123', // ID de prueba (luego se obtiene del perfil)
+    id: 'farmacia-123',
   });
 
-  // Datos mock
   const mockQuotes = [
     {
       id: 1,
@@ -270,7 +263,6 @@ export default function App() {
     ));
   };
 
-  // ✅ ACTUALIZADO: Guardar coordenadas GPS
   const handleGpsToggle = () => {
     if (!useGps) {
       if ("geolocation" in navigator) {
@@ -283,11 +275,24 @@ export default function App() {
             });
             setLocationData(prev => ({
               ...prev,
-              referencePoint: `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`
+              referencePoint: '📍 Ubicación obtenida'
             }));
+            console.log('📍 GPS activado:', pos.coords.latitude, pos.coords.longitude);
           },
-          () => alert("No se pudo obtener la ubicación.")
+          (error) => {
+            console.error('Error al obtener ubicación:', error);
+            alert('No se pudo obtener tu ubicación. Asegúrate de permitir el acceso a la ubicación en tu navegador.');
+            setUseGps(false);
+            setGpsCoords({ lat: null, lng: null });
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
         );
+      } else {
+        alert('Tu navegador no soporta geolocalización.');
       }
     } else {
       setUseGps(false);
@@ -299,7 +304,7 @@ export default function App() {
     }
   };
 
-  // --- 🔥 CARGAR USUARIO AUTENTICADO AL INICIAR LA APP ---
+  // --- Cargar usuario autenticado y su rol ---
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -308,21 +313,20 @@ export default function App() {
         setUserSub(sub);
         setIsAuthenticated(true);
         
-        // 🔴 PARA PRODUCCIÓN: Descomenta estas líneas y comenta las de abajo
-        // const data = await checkPatientLimit(sub);
-        // setUserPlan(data.plan || 'FREE');
-        // setRemainingRequests(data.remainingRequests);
+        const result = await fetchUserAttributes();
+        const attributes = result || {};
+        const role = attributes?.['custom:custom:role'] || 'paciente';
+        setUserRole(role);
         
-        // 🔴 PARA PRUEBAS: Forzamos PRO para ver todos los módulos
         setUserPlan('PRO');
         setRemainingRequests(999);
-        console.log("✅ Usuario autenticado (PRO forzado):", sub);
+        console.log("✅ Usuario autenticado con rol:", role);
       } catch (error) {
         const guestId = "guest-" + Date.now();
         setUserSub(guestId);
         setIsAuthenticated(false);
-        // Invitados también tienen acceso ilimitado
-       setUserPlan('PRO');
+        setUserRole(null);
+        setUserPlan('PRO');
         setRemainingRequests(999);
         console.log("👤 Usuario invitado:", guestId);
       }
@@ -330,7 +334,7 @@ export default function App() {
     checkUser();
   }, []);
 
-  // --- Envío de cotización (SIN LÍMITES PARA PACIENTES) ---
+  // --- Envío de cotización ---
   const handleSendQuote = async (e) => {
     e.preventDefault();
 
@@ -339,8 +343,6 @@ export default function App() {
       alert("Por favor ingresa al menos un medicamento.");
       return;
     }
-
-    // 🔥 Ya no hay límites para pacientes, eliminamos las validaciones
 
     let prescriptionImageUrl = null;
     const fileInput = document.querySelector('input[type="file"]');
@@ -381,7 +383,7 @@ export default function App() {
     const allMedicinesJSON = JSON.stringify(validMedicines);
 
     try {
-      const maxResponses = 10; // Siempre 10 respuestas máximas (puede ser fijo)
+      const maxResponses = 10;
       const inputData = {
         patient_id: userSub,
         patient_name: "",
@@ -410,7 +412,6 @@ export default function App() {
         authMode: 'apiKey'
       });
 
-      // Ya no incrementamos límite
       if (fileInput) {
         fileInput.value = '';
       }
@@ -423,30 +424,44 @@ export default function App() {
     }
   };
 
-  // --- Función para abrir el modal de autenticación ---
   const handleOpenAuthModal = (mode = 'login') => {
     setAuthMode(mode);
     setAuthError('');
     setShowAuthModal(true);
+    setShowPassword(false);
+    setLoadingLogin(false);
   };
 
-  // --- Cerrar sesión ---
   const handleLogout = async () => {
     try {
       await signOut();
       setUserSub(null);
       setIsAuthenticated(false);
+      setUserRole(null);
       const guestId = "guest-" + Date.now();
       setUserSub(guestId);
       setUserPlan('FREE');
       setRemainingRequests(999);
+      setActiveTab('home');
       alert("Sesión cerrada correctamente.");
     } catch (error) {
       alert("Error al cerrar sesión: " + error.message);
     }
   };
 
-  // --- Filtrado de doctores ---
+  // --- Redirigir según rol
+  const redirectByRole = (role) => {
+    if (role === 'paciente') {
+      setActiveTab('patient_feed');
+    } else if (role === 'farmacia') {
+      setActiveTab('pharmacy_panel');
+    } else if (role === 'doctor') {
+      setActiveTab('home');
+    } else {
+      setActiveTab('home');
+    }
+  };
+
   const filteredDoctors = DOCTORS_DATA.filter(doc => {
     const matchSpecialty = doctorFilter.specialty === '' || doc.specialty === doctorFilter.specialty;
     const matchState = doctorFilter.state === '' || doc.state === doctorFilter.state;
@@ -456,7 +471,6 @@ export default function App() {
     return matchSpecialty && matchState && matchSearch;
   });
 
-  // --- Renderizado condicional de páginas ---
   const renderPage = () => {
     switch (activeTab) {
       case 'patient_history':
@@ -487,16 +501,16 @@ export default function App() {
             <PharmacyRegistrationForm setActiveTab={setActiveTab} />
           </div>
         );
-      case 'login':
+      case 'doctor_register':
         return (
-          <div className="max-w-md mx-auto px-4 py-12">
-            <h2 className="text-2xl font-black text-center mb-6">Iniciar Sesión</h2>
-            <div className="bg-white rounded-2xl shadow p-6 space-y-4">
-              <input type="email" placeholder="Correo electrónico" className="w-full border rounded-lg px-4 py-2" />
-              <input type="password" placeholder="Contraseña" className="w-full border rounded-lg px-4 py-2" />
-              <button className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl">Entrar</button>
-              <p className="text-center text-sm">¿No tienes cuenta? <button onClick={() => setActiveTab('onboarding')} className="text-blue-600 font-bold">Regístrate</button></p>
-            </div>
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <button 
+              onClick={() => setActiveTab('home')}
+              className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 mb-4"
+            >
+              ← Volver al buscador
+            </button>
+            <DoctorRegistrationForm setActiveTab={setActiveTab} />
           </div>
         );
       case 'onboarding':
@@ -513,15 +527,14 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 py-12">
             <h2 className="text-3xl font-black text-center mb-8">Elige tu plan ideal</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Plan Paciente Gratuito */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-500 hover:border-blue-600 transition">
-                <h3 className="text-xl font-black">Paciente Gratuito</h3>
+                <h3 className="text-xl font-black">Paciente</h3>
                 <p className="text-3xl font-bold text-emerald-600 my-4">$0</p>
-                <ul className="space-y-2 text-sm">
+                <p className="text-sm text-slate-500">Siempre gratis</p>
+                <ul className="mt-4 space-y-2 text-sm">
                   <li className="flex items-center gap-2">✅ Consultas ilimitadas</li>
                   <li className="flex items-center gap-2">✅ Historial de cotizaciones</li>
                   <li className="flex items-center gap-2">✅ Notificaciones de respuestas</li>
-                  <li className="flex items-center gap-2">✅ Sin costo</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
@@ -531,40 +544,33 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Plan Farmacia Premium */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-emerald-500 hover:border-emerald-600 transition relative">
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-black px-3 py-1 rounded-full">Popular</span>
-                <h3 className="text-xl font-black">Farmacia Premium</h3>
-                <p className="text-3xl font-bold my-4">$9.99<small className="text-base font-normal text-slate-500">/mes</small></p>
-                <p className="text-sm text-emerald-500 font-bold">30 días gratis</p>
-                <ul className="mt-3 space-y-2 text-sm">
+                <h3 className="text-xl font-black">Farmacia Básico</h3>
+                <p className="text-3xl font-bold my-4">$0</p>
+                <p className="text-sm text-slate-500">Siempre gratis</p>
+                <ul className="mt-4 space-y-2 text-sm">
                   <li className="flex items-center gap-2">✅ Cotizaciones ilimitadas</li>
-                  <li className="flex items-center gap-2">✅ Prioridad en respuestas</li>
-                  <li className="flex items-center gap-2">✅ Soporte 24/7</li>
-                  <li className="flex items-center gap-2">✅ Perfil destacado</li>
+                  <li className="flex items-center gap-2">✅ Perfil de farmacia</li>
                   <li className="flex items-center gap-2">✅ Inventario básico</li>
-                  <li className="flex items-center gap-2">✅ Dashboard</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
                   className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl"
                 >
-                  Probar 30 días gratis
+                  Registrarse gratis
                 </button>
               </div>
 
-              {/* Plan Farmacia Pro */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-purple-500 hover:border-purple-600 transition">
                 <h3 className="text-xl font-black">Farmacia Pro</h3>
-                <p className="text-3xl font-bold my-4">$19.99<small className="text-base font-normal text-slate-500">/mes</small></p>
+                <p className="text-3xl font-bold my-4">$9.99<small className="text-base font-normal text-slate-500">/mes</small></p>
                 <p className="text-sm text-emerald-500 font-bold">30 días gratis</p>
-                <ul className="mt-3 space-y-2 text-sm">
-                  <li className="flex items-center gap-2">✅ Todo de Premium</li>
+                <ul className="mt-4 space-y-2 text-sm">
+                  <li className="flex items-center gap-2">✅ Todo de Básico</li>
+                  <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
                   <li className="flex items-center gap-2">✅ Estadísticas avanzadas</li>
-                  <li className="flex items-center gap-2">✅ Promociones y descuentos</li>
-                  <li className="flex items-center gap-2">✅ Chat con pacientes</li>
-                  <li className="flex items-center gap-2">✅ Múltiples usuarios (gerente+empleados)</li>
-                  <li className="flex items-center gap-2">✅ Publicidad destacada</li>
+                  <li className="flex items-center gap-2">✅ Múltiples usuarios</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
@@ -573,21 +579,21 @@ export default function App() {
                   Probar 30 días gratis
                 </button>
               </div>
+            </div>
 
-              {/* Plan Médico VIP */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-teal-500 hover:border-teal-600 transition">
-                <h3 className="text-xl font-black">Médico VIP</h3>
-                <p className="text-3xl font-bold my-4">$9.99<small className="text-base font-normal text-slate-500">/mes</small></p>
-                <p className="text-sm text-emerald-500 font-bold">30 días gratis</p>
-                <ul className="mt-3 space-y-2 text-sm">
+            <div className="max-w-2xl mx-auto mt-8">
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl p-8 shadow-lg text-center border-2 border-purple-700">
+                <h3 className="text-2xl font-black">Médico VIP</h3>
+                <p className="text-3xl font-bold mt-2">$4.99<small className="text-base font-normal opacity-80">/mes</small></p>
+                <p className="text-sm opacity-90">30 días gratis</p>
+                <ul className="mt-4 space-y-2 text-sm max-w-xs mx-auto text-left">
                   <li className="flex items-center gap-2">✅ Perfil destacado en el directorio</li>
                   <li className="flex items-center gap-2">✅ Anuncios contextuales</li>
                   <li className="flex items-center gap-2">✅ Canal directo con pacientes</li>
-                  <li className="flex items-center gap-2">✅ Publicidad en Meta/Google</li>
                 </ul>
                 <button 
                   onClick={() => setActiveTab('onboarding')}
-                  className="w-full mt-6 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-xl"
+                  className="mt-6 bg-white text-purple-700 font-bold px-8 py-2 rounded-full hover:bg-purple-50 transition"
                 >
                   Probar 30 días gratis
                 </button>
@@ -596,58 +602,57 @@ export default function App() {
           </div>
         );
       
-      // ✅ PANEL DE FARMACIA CON SIDEBAR Y BLOQUEO DE MÓDULOS (CON setActiveTab PASADO)
-// ✅ PANEL DE FARMACIA CON SIDEBAR Y BLOQUEO DE MÓDULOS (CON setActiveTab PASADO)
-case 'pharmacy_panel':
-  console.log('🔵 PharmacyPanel: pharmacyTab =', pharmacyTab, 'userPlan =', userPlan);
-  return (
-    <div className="flex min-h-screen bg-slate-50">
-      <PharmacySidebar 
-        activeTab={pharmacyTab}
-        setActiveTab={setPharmacyTab}
-        pharmacyName={pharmacyData.name}
-        logoUrl={pharmacyData.logo}
-        notificationCount={pharmacyData.notificationCount}
-        userPlan={userPlan}
-      />
-      <div className="flex-1 ml-0 md:ml-64 p-4 transition-all">
-        {pharmacyTab === 'dashboard' && (
-          <PharmacyDashboard 
-            pharmacyId={userSub}
-            pharmacyState={locationData.state || 'Aragua'}
-            pharmacyPlan={userPlan}
-            setActiveTab={setActiveTab}
-          />
-        )}
-        {pharmacyTab === 'quotes' && (
-          <PharmacyQuotesList 
-            pharmacyState={locationData.state || 'Aragua'}
-            pharmacyId={pharmacyData.id || userSub}
-          />
-        )}
-        {pharmacyTab === 'inventory' && <PharmacyInventory pharmacyId={pharmacyData.id || userSub} />}
-        {pharmacyTab === 'profile' && <PharmacyProfile pharmacyId={userSub} />}
-        
-        {/* 🔒 Módulos bloqueados según el plan */}
-        {pharmacyTab === 'promotions' && (userPlan === 'PREMIUM' || userPlan === 'PRO') && (
-          <PharmacyPromotions pharmacyId={pharmacyData.id || userSub} />
-        )}
-        {pharmacyTab === 'stats' && <PharmacyStats pharmacyState={locationData.state || 'Aragua'} />}
-        {pharmacyTab === 'chat' && userPlan === 'PRO' && <PharmacyChat />}
-      </div>
-    </div>
-  );
+      case 'pharmacy_panel':
+        console.log('🔵 PharmacyPanel: pharmacyTab =', pharmacyTab, 'userPlan =', userPlan);
+        return (
+          <div className="flex min-h-screen bg-slate-50">
+            <PharmacySidebar 
+              activeTab={pharmacyTab}
+              setActiveTab={setPharmacyTab}
+              pharmacyName={pharmacyData.name}
+              logoUrl={pharmacyData.logo}
+              notificationCount={pharmacyData.notificationCount}
+              userPlan={userPlan}
+            />
+            <div className="flex-1 ml-0 md:ml-64 p-4 transition-all">
+              {pharmacyTab === 'dashboard' && (
+                <PharmacyDashboard 
+                  pharmacyId={userSub}
+                  pharmacyState={locationData.state || 'Aragua'}
+                  pharmacyPlan={userPlan}
+                  setActiveTab={setActiveTab}
+                />
+              )}
+              {pharmacyTab === 'quotes' && (
+                <PharmacyQuotesList 
+                  pharmacyState={locationData.state || 'Aragua'}
+                  pharmacyId={pharmacyData.id || userSub}
+                />
+              )}
+              {pharmacyTab === 'inventory' && <PharmacyInventory pharmacyId={pharmacyData.id || userSub} />}
+              {pharmacyTab === 'profile' && <PharmacyProfile pharmacyId={userSub} />}
+              {pharmacyTab === 'promotions' && (userPlan === 'PREMIUM' || userPlan === 'PRO') && (
+                <PharmacyPromotions pharmacyId={pharmacyData.id || userSub} />
+              )}
+              {pharmacyTab === 'stats' && <PharmacyStats pharmacyState={locationData.state || 'Aragua'} />}
+              {pharmacyTab === 'chat' && userPlan === 'PRO' && <PharmacyChat />}
+            </div>
+          </div>
+        );
 
-      // ✅ NUEVO CASO: PatientFeed (experiencia tipo app para pacientes)
       case 'patient_feed':
-        return <PatientFeed userSub={userSub} setActiveTab={setActiveTab} />;
+        return <PatientFeed 
+          userSub={userSub} 
+          setActiveTab={setActiveTab} 
+          isAuthenticated={isAuthenticated} 
+          onLogout={handleLogout} 
+        />;
 
       default:
         return renderHome();
     }
   };
 
-  // --- Página principal (HOME) ---
   const renderHome = () => (
     <>
       <section className="px-4 pt-6 pb-2 text-center max-w-3xl mx-auto">
@@ -659,7 +664,6 @@ case 'pharmacy_panel':
         </p>
       </section>
 
-      {/* 🔥 BANNER INFORMATIVO PARA REGISTRO (sin límites) */}
       <div className="max-w-7xl mx-auto px-4 mt-2">
         <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border-2 border-blue-200 rounded-xl p-4 text-center shadow-sm">
           <p className="text-sm sm:text-base font-medium text-slate-700">
@@ -677,10 +681,8 @@ case 'pharmacy_panel':
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* FORMULARIO DE BÚSQUEDA */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm space-y-6">
           <form onSubmit={handleSendQuote} className="space-y-6">
-            {/* Medicamentos */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -769,7 +771,6 @@ case 'pharmacy_panel':
             </div>
             <hr className="border-slate-200" />
 
-            {/* Ubicación */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -850,7 +851,6 @@ case 'pharmacy_panel':
             </div>
             <hr className="border-slate-200" />
 
-            {/* Receta */}
             <div className="bg-blue-50 border-2 border-dashed border-blue-300 rounded-xl p-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-1.5">
                 <Upload className="w-5 h-5 text-blue-700" />
@@ -866,9 +866,7 @@ case 'pharmacy_panel':
           </form>
         </div>
 
-        {/* LATERAL DERECHO */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Respuestas en Tiempo Real */}
           <div className="bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
               <div>
@@ -887,9 +885,7 @@ case 'pharmacy_panel':
                 return (
                   <div key={quote.id} className="p-4 rounded-xl border border-slate-300 bg-slate-50 shadow-2xs">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-blue-200 text-blue-950 border border-blue-300 uppercase">
-                        {quote.badge}
-                      </span>
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-blue-200 text-blue-950 border border-blue-300 uppercase">{quote.badge}</span>
                       <span className="text-xs text-slate-600 font-bold">{quote.time}</span>
                     </div>
                     <h4 className="font-extrabold text-slate-950 text-base">{quote.pharmacy}</h4>
@@ -899,15 +895,12 @@ case 'pharmacy_panel':
                         <span className="text-lg font-black text-slate-950">${quote.priceUsd.toFixed(2)} USD</span>
                         <span className="block text-xs font-extrabold text-emerald-700">Bs. {priceBcv}</span>
                       </div>
-                      <button className="bg-slate-900 hover:bg-black text-white font-bold text-xs px-3.5 py-2 rounded-lg">
-                        Contactar WhatsApp
-                      </button>
+                      <button className="bg-slate-900 hover:bg-black text-white font-bold text-xs px-3.5 py-2 rounded-lg">Contactar WhatsApp</button>
                     </div>
                   </div>
                 );
               })}
 
-              {/* 🔥 BOTÓN DE REGISTRO GRATUITO */}
               <div className="mt-4 pt-4 border-t border-slate-200 text-center">
                 <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-xl p-4 border border-blue-200 shadow-sm">
                   <h4 className="font-black text-slate-950 text-base">💡 ¿Quieres ver todas las cotizaciones?</h4>
@@ -916,13 +909,11 @@ case 'pharmacy_panel':
                     onClick={() => setActiveTab('onboarding')}
                     className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-black text-sm py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2"
                   >
-                    <UserPlus className="w-5 h-5" />
-                    Crear cuenta gratuita
+                    <UserPlus className="w-5 h-5" /> Crear cuenta gratuita
                   </button>
                 </div>
               </div>
 
-              {/* Cotizaciones bloqueadas (simuladas) */}
               <div className="relative pt-1 border-t border-slate-200">
                 <div className="space-y-3 filter blur-[4px] pointer-events-none opacity-30">
                   {mockQuotes.slice(2).map((quote) => (
@@ -935,7 +926,6 @@ case 'pharmacy_panel':
             </div>
           </div>
 
-          {/* Productos Destacados */}
           <div className="bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
               <ShoppingBag className="w-5 h-5 text-blue-600" />
@@ -956,7 +946,6 @@ case 'pharmacy_panel':
             </div>
           </div>
 
-          {/* DIRECTORIO MÉDICO */}
           <div className="bg-white rounded-2xl border border-slate-300 p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
@@ -966,7 +955,6 @@ case 'pharmacy_panel':
               <span className="text-[10px] font-black text-white bg-emerald-600 px-2 py-1 rounded-full">+{DOCTORS_DATA.length}</span>
             </div>
 
-            {/* Filtros */}
             <div className="mb-4 space-y-2">
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
@@ -1003,7 +991,6 @@ case 'pharmacy_panel':
               </div>
             </div>
 
-            {/* Lista de doctores con scroll */}
             <div className="max-h-[420px] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
               {filteredDoctors.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-4">No se encontraron médicos.</p>
@@ -1051,7 +1038,6 @@ case 'pharmacy_panel':
         </div>
       </main>
 
-      {/* 🏥 SECCIÓN INFORMATIVA (AL FINAL DE LA PÁGINA) */}
       <div className="max-w-7xl mx-auto px-4 mt-8 mb-8">
         <h2 className="text-3xl font-black text-center text-slate-900 mb-2">
           ¿Para quién es <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>?
@@ -1061,7 +1047,6 @@ case 'pharmacy_panel':
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Tarjeta: Pacientes */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
               <User className="w-6 h-6 text-blue-600" />
@@ -1086,7 +1071,6 @@ case 'pharmacy_panel':
             </button>
           </div>
 
-          {/* Tarjeta: Farmacias */}
           <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-sm hover:shadow-md transition group relative">
             <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">Principal</div>
             <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition">
@@ -1111,7 +1095,6 @@ case 'pharmacy_panel':
             </button>
           </div>
 
-          {/* Tarjeta: Profesionales de la Salud */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition group">
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
               <Stethoscope className="w-6 h-6 text-purple-600" />
@@ -1119,7 +1102,7 @@ case 'pharmacy_panel':
             <h3 className="text-xl font-black text-slate-900">Para Profesionales de la Salud</h3>
             <p className="text-sm text-slate-600 mt-2">
               Médicos, fisioterapeutas, psicólogos, masajistas y más. Conecta con miles de pacientes.
-              <span className="font-bold text-purple-600"> Plan VIP desde $9.99/mes (30 días gratis).</span>
+              <span className="font-bold text-purple-600"> Plan VIP desde $4.99/mes (30 días gratis).</span>
             </p>
             <ul className="mt-3 space-y-1 text-xs text-slate-500">
               <li className="flex items-center gap-2">✅ Perfil destacado en el directorio médico</li>
@@ -1139,7 +1122,7 @@ case 'pharmacy_panel':
     </>
   );
 
-  // --- 🔥 MODAL DE AUTENTICACIÓN REAL ---
+  // --- 🔥 MODAL DE AUTENTICACIÓN (SOLO LOGIN) ---
   const renderAuthModal = () => {
     if (!showAuthModal) return null;
 
@@ -1148,155 +1131,131 @@ case 'pharmacy_panel':
       const email = e.target.email.value;
       const password = e.target.password.value;
       setAuthError('');
+      setLoadingLogin(true);
       try {
+        // 1. Verificar si ya hay un usuario autenticado
+        let currentUser = null;
+        try {
+          currentUser = await getCurrentUser();
+        } catch (e) {
+          // No hay usuario autenticado, continuar con signIn
+        }
+
+        if (currentUser) {
+          // Ya hay sesión, obtener atributos y redirigir
+          const result = await fetchUserAttributes();
+          const attributes = result || {};
+          const role = attributes?.['custom:custom:role'] || 'paciente';
+          setUserRole(role);
+          setUserSub(currentUser.userId);
+          setIsAuthenticated(true);
+          setShowAuthModal(false);
+          setLoadingLogin(false);
+          alert("✅ Ya tenías sesión activa");
+          redirectByRole(role);
+          return;
+        }
+
+        // 2. Si no hay sesión, hacer signIn
         await signIn({ username: email, password });
+        const result = await fetchUserAttributes();
+        const attributes = result || {};
+        const role = attributes?.['custom:custom:role'] || 'paciente';
+        setUserRole(role);
         setShowAuthModal(false);
         const user = await getCurrentUser();
         setUserSub(user.userId);
         setIsAuthenticated(true);
-        // 🔴 PARA PRODUCCIÓN: Descomenta estas líneas
-        // const data = await checkPatientLimit(user.userId);
-        // setUserPlan(data.plan || 'FREE');
-        // setRemainingRequests(data.remainingRequests);
         setUserPlan('PRO');
         setRemainingRequests(999);
         alert("✅ Inicio de sesión exitoso");
+        redirectByRole(role);
       } catch (error) {
-        setAuthError(error.message);
-      }
-    };
-
-    const handleRegister = async (e) => {
-      e.preventDefault();
-      const email = e.target.email.value;
-      const password = e.target.password.value;
-      const confirmPassword = e.target.confirmPassword?.value;
-      const fullName = e.target.fullName?.value || "";
-      
-      if (password !== confirmPassword) {
-        setAuthError("Las contraseñas no coinciden.");
-        return;
-      }
-      
-      setAuthError('');
-      try {
-        await signUp({
-          username: email,
-          password,
-          options: {
-            userAttributes: {
-              email,
-              name: fullName,
-            },
-          },
-        });
-        alert("✅ Registro exitoso. Revisa tu correo para confirmar.");
-        setAuthMode('login');
-        setAuthError('Registro exitoso. Ahora inicia sesión.');
-      } catch (error) {
-        setAuthError(error.message);
+        if (error.message && (error.message.includes('User is not confirmed') || error.message.includes('not confirmed'))) {
+          setAuthError('⚠️ Tu cuenta no ha sido confirmada. Revisa tu correo (incluye spam) y sigue las instrucciones para confirmar tu cuenta.');
+        } else {
+          setAuthError(error.message);
+        }
+      } finally {
+        setLoadingLogin(false);
       }
     };
 
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setShowAuthModal(false)}>
         <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-          {/* Cabecera con logo */}
           <div className="bg-gradient-to-r from-blue-600 to-emerald-500 p-4 flex justify-center items-center gap-3">
             <img src={logoImg} alt="UBIKFARMA" className="h-10 w-auto object-contain" />
-            <span className="font-black text-2xl text-white tracking-tight">
-              UBIK<span className="text-emerald-200">FARMA</span>
-            </span>
+            <span className="font-black text-2xl text-white tracking-tight">UBIK<span className="text-emerald-200">FARMA</span></span>
           </div>
-          
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-black text-slate-900 text-lg">
-                {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Gratuita'}
-              </h3>
+              <h3 className="font-black text-slate-900 text-lg">Iniciar Sesión</h3>
               <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {authError && (
-              <div className={`mb-4 p-3 rounded-lg text-sm ${authError.includes('exitoso') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {authError}
-              </div>
+              <div className="mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700">{authError}</div>
             )}
 
-            <form onSubmit={authMode === 'login' ? handleLogin : handleRegister} className="space-y-4">
-              {authMode === 'register' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Nombre completo</label>
-                  <input 
-                    type="text" 
-                    name="fullName" 
-                    placeholder="Ej. Juan Pérez" 
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    required 
-                  />
-                </div>
-              )}
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Correo electrónico</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  placeholder="tu@email.com" 
-                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                  required 
-                />
+                <input type="email" name="email" placeholder="tu@email.com" className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   name="password" 
                   placeholder="Mínimo 8 caracteres" 
-                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" 
                   required 
-                  minLength="8"
+                  minLength="8" 
                 />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-3 bottom-2 text-slate-400"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-              {authMode === 'register' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Confirmar contraseña</label>
-                  <input 
-                    type="password" 
-                    name="confirmPassword" 
-                    placeholder="Repite la contraseña" 
-                    className="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    required 
-                    minLength="8"
-                  />
-                </div>
-              )}
               <button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition duration-200"
+                disabled={loadingLogin}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition duration-200 flex items-center justify-center"
               >
-                {authMode === 'login' ? 'Entrar' : 'Registrarme'}
+                {loadingLogin ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Entrando...
+                  </>
+                ) : (
+                  'Entrar'
+                )}
               </button>
             </form>
 
             <div className="mt-4 text-center">
               <button 
                 onClick={() => {
-                  setAuthMode(authMode === 'login' ? 'register' : 'login');
-                  setAuthError('');
+                  setShowAuthModal(false);
+                  setActiveTab('onboarding');
                 }}
                 className="text-xs text-blue-600 font-bold hover:underline"
               >
-                {authMode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+                ¿No tienes cuenta? Regístrate gratis
               </button>
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-200 text-center">
-              <button 
-                onClick={() => setShowAuthModal(false)}
-                className="text-xs text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1 mx-auto"
-              >
+              <button onClick={() => setShowAuthModal(false)} className="text-xs text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1 mx-auto">
                 <ArrowLeft className="w-4 h-4" /> Volver a la página principal
               </button>
             </div>
@@ -1306,129 +1265,92 @@ case 'pharmacy_panel':
     );
   };
 
-  // --- Render principal ---
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex flex-col justify-between">
-      
       <div>
-        {/* HEADER */}
-        <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-3 shadow-xs">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
-              <img src={logoImg} alt="UBIKFARMA Logo" className="h-10 sm:h-12 w-auto object-contain" />
-              <div className="flex flex-col leading-none">
-                <span className="font-black text-2xl sm:text-3xl tracking-tight">
-                  <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>
-                </span>
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider hidden sm:block">
-                  Diferentes opciones, un solo lugar
-                </span>
+        {activeTab !== 'patient_feed' && (
+          <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-3 shadow-xs">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+                <img src={logoImg} alt="UBIKFARMA Logo" className="h-10 sm:h-12 w-auto object-contain" />
+                <div className="flex flex-col leading-none">
+                  <span className="font-black text-2xl sm:text-3xl tracking-tight">
+                    <span className="text-blue-600">UBIK</span><span className="text-emerald-500">FARMA</span>
+                  </span>
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider hidden sm:block">
+                    Diferentes opciones, un solo lugar
+                  </span>
+                </div>
+              </div>
+
+              <div className="hidden md:flex items-center gap-3">
+                <button 
+                  onClick={() => setActiveTab('doctor_register')}
+                  className="text-sm font-bold px-3 py-2 rounded-lg border border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 transition"
+                >
+                  <Stethoscope className="w-4 h-4 inline mr-1" /> ¿Eres Médico?
+                </button>
+                <button 
+                  onClick={() => setActiveTab('pharmacy_register')}
+                  className="text-sm font-bold px-3 py-2 rounded-lg border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                >
+                  <Building2 className="w-4 h-4 inline mr-1" /> ¿Eres Farmacia?
+                </button>
+                
+                {isAuthenticated ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-600">👤 {userSub?.slice(0,8)}</span>
+                    <button onClick={handleLogout} className="text-sm font-bold text-red-600 hover:text-red-800 transition px-2">
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => handleOpenAuthModal('login')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">
+                    Iniciar Sesión
+                  </button>
+                )}
+                
+                <button onClick={() => setActiveTab('plans')} className="text-sm font-bold text-emerald-600 hover:text-emerald-800 transition px-2">
+                  Planes
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 md:hidden">
+                {isAuthenticated ? (
+                  <button onClick={handleLogout} className="text-xs font-bold text-red-600 px-2">Cerrar sesión</button>
+                ) : (
+                  <button onClick={() => handleOpenAuthModal('login')} className="bg-blue-600 text-white font-bold text-sm px-3 py-1.5 rounded-lg">Entrar</button>
+                )}
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1.5 rounded-lg text-slate-800 hover:bg-slate-100">
+                  {mobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
+                </button>
               </div>
             </div>
 
-            {/* Menú Desktop */}
-            <div className="hidden md:flex items-center gap-3">
-              <button 
-                onClick={() => setActiveTab('home')}
-                className={`text-sm font-bold px-3 py-2 rounded-lg transition ${activeTab === 'home' ? 'bg-blue-50 text-blue-600' : 'text-slate-800 hover:text-blue-600'}`}
-              >
-                Buscar Cotización
-              </button>
-              <button 
-                onClick={() => setActiveTab('patient_history')}
-                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-lg transition ${activeTab === 'patient_history' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-800 hover:text-emerald-600'}`}
-              >
-                <History className="w-4 h-4" /> <span>Mis Cotizaciones</span>
-              </button>
-              <button 
-                onClick={() => setActiveTab('pharmacy_register')}
-                className={`flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-lg border transition ${activeTab === 'pharmacy_register' ? 'bg-blue-600 text-white border-blue-600' : 'text-blue-800 bg-blue-50 border-blue-200 hover:bg-blue-100'}`}
-              >
-                <Building2 className="w-4 h-4" /> <span>¿Eres Farmacia?</span>
-              </button>
-              
-              {/* 🔥 Botón de autenticación / Cerrar sesión */}
-              {isAuthenticated ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-600">👤 {userSub?.slice(0,8)}</span>
-                  <button 
-                    onClick={handleLogout}
-                    className="text-sm font-bold text-red-600 hover:text-red-800 transition px-2"
-                  >
-                    Cerrar Sesión
+            {mobileMenuOpen && (
+              <div className="md:hidden pt-3 pb-3 px-2 border-t border-slate-200 mt-2 space-y-2 bg-white">
+                <button onClick={() => { setActiveTab('doctor_register'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-purple-700">
+                  <Stethoscope className="w-5 h-5" /> ¿Eres Médico?
+                </button>
+                <button onClick={() => { setActiveTab('pharmacy_register'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-blue-700">
+                  <Building2 className="w-5 h-5" /> ¿Eres Farmacia?
+                </button>
+                <button onClick={() => { setActiveTab('plans'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-emerald-700">
+                  <CreditCard className="w-5 h-5" /> Planes
+                </button>
+                {!isAuthenticated && (
+                  <button onClick={() => { handleOpenAuthModal('login'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-blue-600">
+                    <LogIn className="w-5 h-5" /> Iniciar Sesión
                   </button>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => handleOpenAuthModal('login')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition"
-                >
-                  Iniciar Sesión
-                </button>
-              )}
-              
-              <button 
-                onClick={() => setActiveTab('plans')}
-                className="text-sm font-bold text-emerald-600 hover:text-emerald-800 transition px-2"
-              >
-                Planes
-              </button>
-            </div>
+                )}
+              </div>
+            )}
+          </header>
+        )}
 
-            {/* Menú Mobile */}
-            <div className="flex items-center gap-2 md:hidden">
-              {isAuthenticated ? (
-                <button 
-                  onClick={handleLogout}
-                  className="text-xs font-bold text-red-600 px-2"
-                >
-                  Cerrar sesión
-                </button>
-              ) : (
-                <button 
-                  onClick={() => handleOpenAuthModal('login')} 
-                  className="bg-blue-600 text-white font-bold text-sm px-3 py-1.5 rounded-lg"
-                >
-                  Entrar
-                </button>
-              )}
-              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1.5 rounded-lg text-slate-800 hover:bg-slate-100">
-                {mobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Menú desplegable mobile */}
-          {mobileMenuOpen && (
-            <div className="md:hidden pt-3 pb-3 px-2 border-t border-slate-200 mt-2 space-y-2 bg-white">
-              <button onClick={() => { setActiveTab('home'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-slate-800">
-                <Search className="w-5 h-5 text-blue-600" /> Buscar Cotización
-              </button>
-              <button onClick={() => { setActiveTab('patient_history'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-slate-800">
-                <History className="w-5 h-5 text-emerald-600" /> Mis Cotizaciones
-              </button>
-              <button onClick={() => { setActiveTab('pharmacy_register'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-blue-800 bg-blue-50">
-                <Building2 className="w-5 h-5 text-blue-600" /> ¿Eres Farmacia?
-              </button>
-              <button onClick={() => { setActiveTab('plans'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-50">
-                <CreditCard className="w-5 h-5 text-emerald-600" /> Planes
-              </button>
-              {!isAuthenticated && (
-                <button onClick={() => { handleOpenAuthModal('login'); setMobileMenuOpen(false); }} className="w-full text-left flex items-center gap-2 p-2 rounded-lg text-sm font-bold text-blue-600">
-                  <LogIn className="w-5 h-5" /> Iniciar Sesión
-                </button>
-              )}
-            </div>
-          )}
-        </header>
-
-        {/* CONTENIDO PRINCIPAL */}
         {renderPage()}
-        
       </div>
 
-      {/* FOOTER */}
       <footer className="bg-slate-900 text-slate-400 py-6 px-4 mt-12 border-t border-slate-800 text-center text-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 UBIKFARMA - Todos los derechos reservados.</p>
@@ -1441,9 +1363,7 @@ case 'pharmacy_panel':
         </div>
       </footer>
 
-      {/* Modal de autenticación */}
       {renderAuthModal()}
-      
     </div>
   );
 }
