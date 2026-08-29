@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
-import { signUp, confirmSignUp, signIn } from 'aws-amplify/auth';
+import React, { useState, useEffect } from 'react';
+import { signUp, confirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
 import { Eye, EyeOff } from 'lucide-react';
 
-const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthError }) => {
+const OnboardingPage = ({ 
+  setActiveTab, 
+  setShowAuthModal, 
+  setAuthMode, 
+  setAuthError,
+  initialEmail = ''
+}) => {
   const [step, setStep] = useState('register');
   const [formData, setFormData] = useState({
     fullName: '',
-    email: '',
+    email: initialEmail || '',
     password: '',
     confirmPassword: '',
     role: 'paciente',
@@ -17,6 +23,25 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (initialEmail) {
+      setStep('confirm');
+      setFormData(prev => ({ ...prev, email: initialEmail }));
+      setError('Se ha enviado un código de verificación a tu correo. Introdúcelo a continuación.');
+    }
+  }, [initialEmail]);
+
+  // Scroll al formulario al cambiar de paso
+  useEffect(() => {
+    if (step === 'confirm') {
+      setTimeout(() => {
+        const form = document.querySelector('form');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [step]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -47,11 +72,14 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
           },
         },
       });
-      setSuccess(true);
+      
+      // 🚨 CORRECCIÓN: NO hacer setSuccess(true) aquí.
+      // Solo cambiamos el paso a 'confirm' para mostrar la casilla del código OTP.
       setStep('confirm');
-      setError('Hemos enviado un código de verificación a tu correo. Revisa tu bandeja de entrada y también la carpeta de spam.');
+      setError('✅ Hemos enviado un código de verificación a tu correo. Por favor revísalo e ingrésalo abajo.');
     } catch (err) {
-      setError(err.message);
+      console.error("Error exacto en signUp:", err.name, err.message);
+      setError(err.message || 'Error al registrar el usuario');
     } finally {
       setLoading(false);
     }
@@ -70,35 +98,46 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
         username: formData.email,
         confirmationCode: confirmationCode.trim(),
       });
+      
+      // 📌 AHORA SÍ: La verificación fue exitosa en Cognito
       setSuccess(true);
-      setError('✅ Cuenta confirmada exitosamente. Ahora inicia sesión.');
-      setAuthMode('login');
-      setShowAuthModal(true);
-      setTimeout(() => {
-        setActiveTab('home');
-      }, 2000);
     } catch (err) {
-      setError(err.message);
+      console.error("Error al confirmar código:", err);
+      setError(err.message || 'Error al verificar el código');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResendCode = async () => {
+    setResending(true);
+    setError('');
+    try {
+      await resendSignUpCode({ username: formData.email });
+      setError('✅ Se ha reenviado un nuevo código a tu correo.');
+    } catch (err) {
+      setError('Error al reenviar el código: ' + err.message);
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // Esta pantalla SOLO se renderiza cuando confirmSignUp haya terminado correctamente
   if (success && step === 'confirm') {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8">
-          <h2 className="text-2xl font-black text-emerald-800">✅ ¡Cuenta confirmada!</h2>
-          <p className="text-emerald-700 mt-2">Ya puedes iniciar sesión con tu correo y contraseña.</p>
+          <h2 className="text-2xl font-black text-emerald-800">✅ ¡Cuenta verificada con éxito!</h2>
+          <p className="text-emerald-700 mt-2">Tu correo ha sido confirmado y tu cuenta ya está activa.</p>
           <button 
             onClick={() => {
               setAuthMode('login');
               setShowAuthModal(true);
               setActiveTab('home');
             }}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-xl"
+            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl transition"
           >
-            Ir a iniciar sesión
+            Iniciar sesión ahora
           </button>
         </div>
       </div>
@@ -108,11 +147,11 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
       <h2 className="text-3xl font-black text-center mb-8">
-        {step === 'register' ? '¡Crea tu cuenta gratis!' : 'Confirmar tu cuenta'}
+        {step === 'register' ? '¡Crea tu cuenta gratis!' : '🔑 Verifica tu correo electrónico'}
       </h2>
       <div className="bg-white rounded-2xl shadow p-8">
         {error && (
-          <div className={`mb-4 p-3 rounded-lg text-sm ${error.includes('exitoso') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          <div className={`mb-4 p-3 rounded-lg text-sm ${error.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
             {error}
           </div>
         )}
@@ -231,7 +270,12 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
           </form>
         ) : (
           <form onSubmit={handleConfirm} className="space-y-5">
-            <p className="text-sm text-slate-600">Ingresa el código de 6 dígitos que enviamos a <strong>{formData.email}</strong></p>
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+              <p className="text-sm text-blue-700 font-bold">
+                ✉️ Ingresa el código de 6 dígitos que enviamos a <strong>{formData.email}</strong>.
+              </p>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Código de verificación</label>
               <input
@@ -239,7 +283,7 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
                 value={confirmationCode}
                 onChange={(e) => setConfirmationCode(e.target.value)}
                 placeholder="Ej. 123456"
-                className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-widest text-lg font-mono"
                 required
               />
             </div>
@@ -248,7 +292,15 @@ const OnboardingPage = ({ setActiveTab, setShowAuthModal, setAuthMode, setAuthEr
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50"
             >
-              {loading ? 'Verificando...' : 'Verificar código'}
+              {loading ? 'Verificando...' : 'Verificar e Ingresar'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resending}
+              className="w-full text-sm text-blue-600 hover:underline font-semibold"
+            >
+              {resending ? 'Reenviando...' : '¿No recibiste el código? Reenviar'}
             </button>
           </form>
         )}

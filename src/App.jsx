@@ -153,6 +153,10 @@ export default function App() {
   const [userSub, setUserSub] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [userName, setUserName] = useState('');
+
+  // ✅ NUEVO: estado para precargar email en onboarding (desde el login fallido)
+  const [initialEmailForConfirmation, setInitialEmailForConfirmation] = useState('');
 
   const [medicinesList, setMedicinesList] = useState([
     { id: 1, medicine: '', dosage: '', presentation: 'Tabletas / Comprimidos', quantity: 1 }
@@ -317,6 +321,7 @@ export default function App() {
         const attributes = result || {};
         const role = attributes?.['custom:custom:role'] || 'paciente';
         setUserRole(role);
+        setUserName(attributes?.name || 'Usuario');
         
         setUserPlan('PRO');
         setRemainingRequests(999);
@@ -326,6 +331,7 @@ export default function App() {
         setUserSub(guestId);
         setIsAuthenticated(false);
         setUserRole(null);
+        setUserName('');
         setUserPlan('PRO');
         setRemainingRequests(999);
         console.log("👤 Usuario invitado:", guestId);
@@ -430,6 +436,7 @@ export default function App() {
     setShowAuthModal(true);
     setShowPassword(false);
     setLoadingLogin(false);
+    setInitialEmailForConfirmation('');
   };
 
   const handleLogout = async () => {
@@ -438,6 +445,7 @@ export default function App() {
       setUserSub(null);
       setIsAuthenticated(false);
       setUserRole(null);
+      setUserName('');
       const guestId = "guest-" + Date.now();
       setUserSub(guestId);
       setUserPlan('FREE');
@@ -449,7 +457,7 @@ export default function App() {
     }
   };
 
-  // --- Redirigir según rol
+  // --- Redirigir según rol (ya existe y se usa en varios lugares)
   const redirectByRole = (role) => {
     if (role === 'paciente') {
       setActiveTab('patient_feed');
@@ -457,6 +465,23 @@ export default function App() {
       setActiveTab('pharmacy_panel');
     } else if (role === 'doctor') {
       setActiveTab('home');
+    } else {
+      setActiveTab('home');
+    }
+  };
+
+  // 🆕 Función para manejar el clic en el logo
+  const handleLogoClick = () => {
+    if (isAuthenticated) {
+      if (userRole === 'paciente') {
+        setActiveTab('patient_feed');
+      } else if (userRole === 'farmacia') {
+        setActiveTab('pharmacy_panel');
+      } else if (userRole === 'doctor') {
+        setActiveTab('home');
+      } else {
+        setActiveTab('home');
+      }
     } else {
       setActiveTab('home');
     }
@@ -520,6 +545,7 @@ export default function App() {
             setShowAuthModal={setShowAuthModal}
             setAuthMode={setAuthMode}
             setAuthError={setAuthError}
+            initialEmail={initialEmailForConfirmation}
           />
         );
       case 'plans':
@@ -1064,10 +1090,16 @@ export default function App() {
               <li className="flex items-center gap-2">✅ Notificaciones de respuestas</li>
             </ul>
             <button 
-              onClick={() => setActiveTab('onboarding')}
+              onClick={() => {
+                if (isAuthenticated && userRole === 'paciente') {
+                  setActiveTab('patient_feed');
+                } else {
+                  setActiveTab('onboarding');
+                }
+              }}
               className="mt-4 text-sm font-bold text-blue-600 hover:underline flex items-center gap-1"
             >
-              Regístrate Aquí. <ChevronRight className="w-4 h-4" />
+              {isAuthenticated && userRole === 'paciente' ? 'Ir a mi feed' : 'Regístrate Aquí'} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -1088,10 +1120,16 @@ export default function App() {
               <li className="flex items-center gap-2">✅ Publicidad destacada en Meta y Google</li>
             </ul>
             <button 
-              onClick={() => setActiveTab('pharmacy_register')}
+              onClick={() => {
+                if (isAuthenticated && userRole === 'farmacia') {
+                  setActiveTab('pharmacy_panel');
+                } else {
+                  setActiveTab('pharmacy_register');
+                }
+              }}
               className="mt-4 text-sm font-bold text-emerald-600 hover:underline flex items-center gap-1"
             >
-              Ver planes <ChevronRight className="w-4 h-4" />
+              {isAuthenticated && userRole === 'farmacia' ? 'Ir a mi panel' : 'Ver planes'} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -1111,10 +1149,16 @@ export default function App() {
               <li className="flex items-center gap-2">✅ Anuncios en Meta y Google</li>
             </ul>
             <button 
-              onClick={() => setActiveTab('plans')}
+              onClick={() => {
+                if (isAuthenticated && userRole === 'doctor') {
+                  setActiveTab('home'); // o podrías tener un panel de doctor
+                } else {
+                  setActiveTab('plans');
+                }
+              }}
               className="mt-4 text-sm font-bold text-purple-600 hover:underline flex items-center gap-1"
             >
-              Ver planes VIP <ChevronRight className="w-4 h-4" />
+              {isAuthenticated && userRole === 'doctor' ? 'Ir a mi panel' : 'Ver planes VIP'} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -1142,26 +1186,36 @@ export default function App() {
         }
 
         if (currentUser) {
-          // Ya hay sesión, obtener atributos y redirigir
-          const result = await fetchUserAttributes();
-          const attributes = result || {};
-          const role = attributes?.['custom:custom:role'] || 'paciente';
-          setUserRole(role);
-          setUserSub(currentUser.userId);
-          setIsAuthenticated(true);
-          setShowAuthModal(false);
-          setLoadingLogin(false);
-          alert("✅ Ya tenías sesión activa");
-          redirectByRole(role);
-          return;
+          // Intentar obtener atributos, si falla (sesión inválida) continuar con signIn
+          try {
+            const result = await fetchUserAttributes();
+            const attributes = result || {};
+            const role = attributes?.['custom:custom:role'] || 'paciente';
+            const name = attributes?.name || 'Usuario';
+            setUserRole(role);
+            setUserName(name);
+            setUserSub(currentUser.userId);
+            setIsAuthenticated(true);
+            setShowAuthModal(false);
+            setLoadingLogin(false);
+            alert("✅ Ya tenías sesión activa");
+            redirectByRole(role);
+            return;
+          } catch (err) {
+            // Sesión inválida, continuar con login normal
+            console.log("Sesión inválida, intentando login con credenciales");
+            // No retornamos, se ejecutará el signIn a continuación
+          }
         }
 
-        // 2. Si no hay sesión, hacer signIn
+        // 2. Si no hay sesión o la sesión es inválida, hacer signIn
         await signIn({ username: email, password });
         const result = await fetchUserAttributes();
         const attributes = result || {};
         const role = attributes?.['custom:custom:role'] || 'paciente';
+        const name = attributes?.name || 'Usuario';
         setUserRole(role);
+        setUserName(name);
         setShowAuthModal(false);
         const user = await getCurrentUser();
         setUserSub(user.userId);
@@ -1171,8 +1225,24 @@ export default function App() {
         alert("✅ Inicio de sesión exitoso");
         redirectByRole(role);
       } catch (error) {
+        // Manejo específico para "User is not confirmed"
         if (error.message && (error.message.includes('User is not confirmed') || error.message.includes('not confirmed'))) {
-          setAuthError('⚠️ Tu cuenta no ha sido confirmada. Revisa tu correo (incluye spam) y sigue las instrucciones para confirmar tu cuenta.');
+          setAuthError(
+            <div>
+              <p className="text-red-700 font-bold">⚠️ Tu cuenta no ha sido confirmada.</p>
+              <p className="text-sm text-slate-600">Revisa tu correo (incluye spam) y sigue las instrucciones para confirmar tu cuenta, o haz clic en el botón para reenviar el código.</p>
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setInitialEmailForConfirmation(email);
+                  setActiveTab('onboarding');
+                }}
+                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl transition"
+              >
+                Ir a confirmar cuenta
+              </button>
+            </div>
+          );
         } else {
           setAuthError(error.message);
         }
@@ -1197,7 +1267,9 @@ export default function App() {
             </div>
 
             {authError && (
-              <div className="mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700">{authError}</div>
+              <div className="mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700">
+                {authError}
+              </div>
             )}
 
             <form onSubmit={handleLogin} className="space-y-4">
@@ -1271,7 +1343,7 @@ export default function App() {
         {activeTab !== 'patient_feed' && (
           <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 py-3 shadow-xs">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+              <div className="flex items-center gap-3 cursor-pointer" onClick={handleLogoClick}>
                 <img src={logoImg} alt="UBIKFARMA Logo" className="h-10 sm:h-12 w-auto object-contain" />
                 <div className="flex flex-col leading-none">
                   <span className="font-black text-2xl sm:text-3xl tracking-tight">
@@ -1299,13 +1371,30 @@ export default function App() {
                 
                 {isAuthenticated ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-600">👤 {userSub?.slice(0,8)}</span>
-                    <button onClick={handleLogout} className="text-sm font-bold text-red-600 hover:text-red-800 transition px-2">
+                    <span className="text-xs font-bold text-slate-600">👤 {userName}</span>
+                    <button 
+                      onClick={() => {
+                        if (userRole === 'paciente') setActiveTab('patient_feed');
+                        else if (userRole === 'farmacia') setActiveTab('pharmacy_panel');
+                        else if (userRole === 'doctor') setActiveTab('home');
+                        else setActiveTab('home');
+                      }}
+                      className="text-sm font-bold text-blue-600 hover:text-blue-800 transition px-2"
+                    >
+                      Mi Panel
+                    </button>
+                    <button 
+                      onClick={handleLogout}
+                      className="text-sm font-bold text-red-600 hover:text-red-800 transition px-2"
+                    >
                       Cerrar Sesión
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => handleOpenAuthModal('login')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition">
+                  <button 
+                    onClick={() => handleOpenAuthModal('login')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition"
+                  >
                     Iniciar Sesión
                   </button>
                 )}
@@ -1366,4 +1455,4 @@ export default function App() {
       {renderAuthModal()}
     </div>
   );
-}
+} 
