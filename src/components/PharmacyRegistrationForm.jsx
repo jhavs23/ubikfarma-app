@@ -41,44 +41,40 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
 
   const plans = [
     {
-      id: 'premium',
-      name: 'Premium',
-      price: '$9.99/mes',
+      id: 'basico',
+      name: 'Básico',
+      price: '$0/mes',
       features: [
         'Cotizaciones ilimitadas',
-        'Prioridad en respuestas',
-        'Soporte 24/7',
-        'Alertas de publicidad Meta/Google',
-        'Perfil destacado en la zona'
+        'Perfil de farmacia',
+        'Inventario básico',
+        'Soporte por correo'
       ],
-      badge: 'Popular',
-      highlighted: true,
-      trial: '15 días gratis'
+      badge: 'Siempre gratis',
+      highlighted: false,
+      trial: ''
     },
     {
       id: 'pro',
-      name: 'Pro',
-      price: '$19.99/mes',
+      name: 'PRO',
+      price: '$9.99/mes',
       features: [
-        'Todo de Premium',
-        'Estadísticas avanzadas (gráficos, tendencias)',
+        'Todo de Básico',
         'Publicidad destacada en Meta y Google',
+        'Estadísticas avanzadas (gráficos, tendencias)',
         'Múltiples usuarios (gerente + empleados)',
         'Panel de control personalizado'
       ],
-      badge: 'Recomendado',
-      highlighted: false,
-      trial: '15 días gratis'
+      badge: 'Popular',
+      highlighted: true,
+      trial: '30 días gratis'
     }
   ];
 
   const handleSubscribe = (planId) => {
-    // Redirigir al onboarding con el plan pre-seleccionado (opcional)
-    // Por ahora solo cambiamos a la pestaña onboarding
     if (setActiveTab) {
       setActiveTab('onboarding');
     } else {
-      // Fallback: recargar la página con hash o usar window.location
       window.location.href = '/onboarding';
     }
   };
@@ -100,13 +96,13 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => handleSubscribe('premium')}
+              onClick={() => handleSubscribe('pro')}
               className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
             >
-              Probar 15 días gratis <ChevronRight className="w-5 h-5" />
+              Probar 30 días gratis <ChevronRight className="w-5 h-5" />
             </button>
             <button
-              onClick={() => handleSubscribe('pro')}
+              onClick={() => handleSubscribe('basico')}
               className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
             >
               Ver planes <ChevronRight className="w-5 h-5" />
@@ -143,7 +139,7 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
                 <span className="text-2xl font-black text-emerald-700">1</span>
               </div>
               <h3 className="font-bold text-slate-900">Regístrate gratis</h3>
-              <p className="text-sm text-slate-600">Crea tu cuenta en minutos. Elige tu plan y activa tu prueba de 15 días.</p>
+              <p className="text-sm text-slate-600">Crea tu cuenta en minutos. Elige tu plan y activa tu prueba de 30 días.</p>
             </div>
             <div>
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -169,7 +165,7 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
           Elige el plan ideal para tu farmacia
         </h2>
         <p className="text-center text-slate-600 mb-12">
-          Prueba 15 días gratis. Sin compromiso. Cancela cuando quieras.
+          Prueba 30 días gratis del plan PRO. Sin compromiso. Cancela cuando quieras.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan) => (
@@ -188,7 +184,7 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
               )}
               <h3 className="text-2xl font-black text-slate-900 mt-2">{plan.name}</h3>
               <p className="text-3xl font-bold text-emerald-600 mt-2">{plan.price}</p>
-              <p className="text-sm text-emerald-500 font-bold">{plan.trial}</p>
+              {plan.trial && <p className="text-sm text-emerald-500 font-bold">{plan.trial}</p>}
               <ul className="mt-4 space-y-2">
                 {plan.features.map((feature, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
@@ -205,7 +201,7 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
                     : 'bg-slate-800 hover:bg-slate-900 text-white'
                 }`}
               >
-                Probar 15 días gratis
+                {plan.id === 'basico' ? 'Registrarse gratis' : 'Probar 30 días gratis'}
               </button>
             </div>
           ))}
@@ -222,10 +218,10 @@ const PharmacyRegistrationForm = ({ setActiveTab }) => {
             Únete a cientos de farmacias que ya están vendiendo más con UBIKFARMA.
           </p>
           <button
-            onClick={() => handleSubscribe('premium')}
+            onClick={() => handleSubscribe('pro')}
             className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:scale-105 inline-flex items-center gap-2"
           >
-            Probar 15 días gratis <ChevronRight className="w-5 h-5" />
+            Probar 30 días gratis <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </section>
